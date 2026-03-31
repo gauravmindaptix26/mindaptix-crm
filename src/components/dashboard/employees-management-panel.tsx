@@ -3,9 +3,10 @@
 import type { ReactNode } from "react";
 import { useActionState, useMemo, useState } from "react";
 import { assignProjectToUser, createManagedProject } from "@/actions/project-management";
-import { createManagedUser, updateManagedUserAccess } from "@/actions/user-management";
+import { createManagedUser } from "@/actions/user-management";
 import { AuthFeedback } from "@/components/auth/auth-feedback";
 import { Button } from "@/components/ui/button";
+import { DashboardTable, DashboardTableCell } from "@/components/ui/dashboard-table";
 import { INITIAL_USER_MANAGEMENT_STATE } from "@/lib/auth/user-management-form-state";
 import type {
   DsrFeedEntry,
@@ -13,7 +14,7 @@ import type {
   EmployeeOption,
   EmployeeProjectEntry,
   SummaryCard,
-} from "@/lib/dashboard/mvp-data";
+} from "@/lib/dashboard/dashboard-data";
 import type { ProjectPriority, ProjectStatus } from "@/lib/models/project";
 
 type EmployeesManagementPanelProps = {
@@ -51,7 +52,10 @@ export function EmployeesManagementPanel({
   const [projectState, createProjectAction, projectPending] = useActionState(createManagedProject, INITIAL_PROJECT_STATE);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
+  const [selectedUserId, setSelectedUserId] = useState(users[0]?.id ?? "");
+
   const projectNameById = new Map(projects.map((project) => [project.id, project.name]));
+
   const filteredUsers = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
 
@@ -68,6 +72,8 @@ export function EmployeesManagementPanel({
     });
   }, [roleFilter, searchTerm, users]);
 
+  const selectedUser = filteredUsers.find((user) => user.id === selectedUserId) ?? filteredUsers[0] ?? null;
+
   return (
     <div className="space-y-6 px-5 py-5 sm:px-7 sm:py-6">
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -83,13 +89,23 @@ export function EmployeesManagementPanel({
             eyebrow="Employee Management"
             title="Create New Employee"
           >
-            <form action={createUserAction} className="mt-6 space-y-4">
+            <form action={createUserAction} autoComplete="off" className="mt-6 space-y-4">
+              <input autoComplete="username" className="hidden" name="fakeUsername" tabIndex={-1} type="text" />
+              <input autoComplete="new-password" className="hidden" name="fakePassword" tabIndex={-1} type="password" />
+
               {userState.error ? <AuthFeedback>{userState.error}</AuthFeedback> : null}
               {userState.success ? <AuthFeedback tone="success">{userState.success}</AuthFeedback> : null}
 
               <div className="grid gap-4 md:grid-cols-2">
                 <Field defaultValue={userState.values?.fullName} label="Full Name" name="fullName" placeholder="Enter full name" />
-                <Field defaultValue={userState.values?.email} label="Email Address" name="email" placeholder="Enter email" type="email" />
+                <Field
+                  autoComplete="off"
+                  defaultValue={userState.values?.email}
+                  label="Email Address"
+                  name="email"
+                  placeholder="Enter email"
+                  type="email"
+                />
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -104,7 +120,7 @@ export function EmployeesManagementPanel({
                 />
               </div>
 
-              <Field label="Temporary Password" name="password" placeholder="Create a strong password" type="password" />
+              <Field autoComplete="new-password" label="Temporary Password" name="password" placeholder="Create a strong password" type="password" />
 
               <div className="grid gap-4 md:grid-cols-2">
                 <SelectField
@@ -199,7 +215,7 @@ export function EmployeesManagementPanel({
         description={
           readOnly
             ? "View the employees currently visible in your team scope along with their assigned projects and status."
-            : "Edit basic profile fields, assign role, update status, and map projects to employee accounts."
+            : "Select one employee from the list, then update name, email, role, status, manager, and projects from a single editor."
         }
         eyebrow="Directory"
         title={readOnly ? "Team Employees" : "Employee Directory"}
@@ -217,17 +233,17 @@ export function EmployeesManagementPanel({
           <SelectField
             defaultValue="ALL"
             label="Role Filter"
-            labels={{ ALL: "All Roles", EMPLOYEE: "Employee", MANAGER: "Manager", SUPER_ADMIN: "Admin" }}
+            labels={{ ALL: "All Roles", EMPLOYEE: "Employee", MANAGER: "Manager" }}
             name="directoryRoleFilter"
             onChangeValue={setRoleFilter}
-            options={["ALL", "EMPLOYEE", "MANAGER", "SUPER_ADMIN"]}
+            options={["ALL", "EMPLOYEE", "MANAGER"]}
           />
         </div>
 
-        <div className="mt-6 space-y-5">
-          {filteredUsers.map((user) => (
-            <article className="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-5" key={user.id}>
-              {readOnly ? (
+        {readOnly ? (
+          <div className="mt-6 space-y-5">
+            {filteredUsers.map((user) => (
+              <article className="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-5" key={user.id}>
                 <div className="space-y-5">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
@@ -258,111 +274,132 @@ export function EmployeesManagementPanel({
                   {user.role === "EMPLOYEE" ? (
                     <ReadOnlyField label="Reporting Manager" value={user.managerName || "Not assigned"} />
                   ) : null}
+
+                  <div className="flex flex-wrap gap-2">
+                    {user.projectIds.length ? (
+                      user.projectIds.map((projectId) => (
+                        <span
+                          className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700"
+                          key={projectId}
+                        >
+                          {projectNameById.get(projectId) ?? "Assigned Project"}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
+                        No project assigned
+                      </span>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <form action={updateManagedUserAccess} className="space-y-5">
-                  <input name="userId" type="hidden" value={user.id} />
+              </article>
+            ))}
+          </div>
+        ) : (
+          <div className="mt-6 space-y-6">
+            <DashboardTable
+              columns={[
+                { label: "Employee" },
+                { label: "Role" },
+                { label: "Status" },
+                { label: "Manager" },
+                { label: "Projects" },
+                { label: "Action" },
+              ]}
+              emptyMessage="No employees match the current search or filter."
+              hasRows={filteredUsers.length > 0}
+            >
+              {filteredUsers.map((user) => (
+                <tr className={selectedUser?.id === user.id ? "bg-blue-50/50" : ""} key={user.id}>
+                  <DashboardTableCell>
+                    <p className="font-semibold text-slate-900">{user.fullName}</p>
+                    <p className="mt-1 text-xs text-slate-500">{user.email}</p>
+                  </DashboardTableCell>
+                  <DashboardTableCell>{roleLabel(user.role)}</DashboardTableCell>
+                  <DashboardTableCell>{user.status}</DashboardTableCell>
+                  <DashboardTableCell>{user.managerName || "No manager"}</DashboardTableCell>
+                  <DashboardTableCell>
+                    {user.projectIds.length ? user.projectIds.map((projectId) => projectNameById.get(projectId) ?? "Assigned Project").join(", ") : "No project assigned"}
+                  </DashboardTableCell>
+                  <DashboardTableCell>
+                    <Button className="sm:w-auto" onClick={() => setSelectedUserId(user.id)} type="button">
+                      Edit
+                    </Button>
+                  </DashboardTableCell>
+                </tr>
+              ))}
+            </DashboardTable>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-                      {roleLabel(user.role)}
-                    </span>
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      {user.status}
-                    </span>
-                    {user.documentUrl ? (
-                      <a
-                        className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700"
-                        href={user.documentUrl}
-                        rel="noreferrer"
-                        target="_blank"
-                      >
-                        {user.documentName || "Open Document"}
-                      </a>
-                    ) : null}
-                  </div>
-
-                  <div className="grid gap-4 xl:grid-cols-3">
-                    <Field defaultValue={user.fullName} label="Full Name" name="fullName" placeholder="Full name" />
-                    <Field defaultValue={user.email} label="Email" name="email" placeholder="Email" type="email" />
-                    <Field defaultValue={user.phone} label="Phone" name="phone" placeholder="Phone number" />
-                  </div>
-
-                  <div className="grid gap-4 xl:grid-cols-4">
-                    <Field
-                      defaultValue={user.joiningDate}
-                      label="Joining Date"
-                      name="joiningDate"
-                      placeholder="Joining date"
-                      type="date"
-                    />
-                    <SelectField
-                      defaultValue={user.role}
-                      label="Role"
-                      labels={{ EMPLOYEE: "Employee", MANAGER: "Manager", SUPER_ADMIN: "Admin" }}
-                      name="role"
-                      options={["EMPLOYEE", "MANAGER", "SUPER_ADMIN"]}
-                    />
-                    <SelectField defaultValue={user.status} label="Status" name="status" options={["ACTIVE", "SUSPENDED"]} />
-                    <div className="flex items-end">
-                      <Button className="sm:w-auto" type="submit">
-                        Save Employee
-                      </Button>
-                    </div>
-                  </div>
-
-                  <SelectField
-                    defaultValue={user.managerId}
-                    includePlaceholder
-                    label="Reporting Manager"
-                    labels={Object.fromEntries(managerOptions.map((manager) => [manager.id, manager.label]))}
-                    name="managerId"
-                    options={managerOptions.map((manager) => manager.id).filter((managerId) => managerId !== user.id)}
-                    placeholder="No manager"
-                  />
-                </form>
-              )}
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                {user.projectIds.length ? (
-                  user.projectIds.map((projectId) => (
-                    <span
-                      className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700"
-                      key={projectId}
-                    >
-                      {projectNameById.get(projectId) ?? "Assigned Project"}
-                    </span>
-                  ))
-                ) : (
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
-                    No project assigned
+            {selectedUser ? (
+              <section className="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-5" key={selectedUser.id}>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
+                    {roleLabel(selectedUser.role)}
                   </span>
-                )}
-              </div>
-
-              {!readOnly && user.role === "EMPLOYEE" && projects.length ? (
-                <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-white p-4">
-                  <form action={assignProjectToUser} className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_120px]">
-                    <input name="userId" type="hidden" value={user.id} />
-                    <SelectField
-                      defaultValue=""
-                      includePlaceholder
-                      label="Assign Project"
-                      labels={Object.fromEntries(projects.map((project) => [project.id, project.name]))}
-                      name="projectId"
-                      options={projects.map((project) => project.id)}
-                    />
-                    <div className="flex items-end">
-                      <Button className="sm:w-auto" type="submit">
-                        Assign
-                      </Button>
-                    </div>
-                  </form>
+                  {selectedUser.documentUrl ? (
+                    <a
+                      className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700"
+                      href={selectedUser.documentUrl}
+                      rel="noreferrer"
+                      target="_blank"
+                    >
+                      {selectedUser.documentName || "Open Document"}
+                    </a>
+                  ) : null}
                 </div>
-              ) : null}
-            </article>
-          ))}
-        </div>
+
+                <h3 className="mt-4 text-2xl font-semibold tracking-tight text-slate-950">Assign Project to {selectedUser.fullName}</h3>
+                <p className="mt-2 text-sm text-slate-500">Employee select ho chuka hai. Ab neeche se project choose karke assign karo.</p>
+
+                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                  <ReadOnlyField label="Employee Name" value={selectedUser.fullName} />
+                  <ReadOnlyField label="Email" value={selectedUser.email} />
+                  <ReadOnlyField label="Reporting Manager" value={selectedUser.managerName || "Not assigned"} />
+                </div>
+
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {selectedUser.projectIds.length ? (
+                    selectedUser.projectIds.map((projectId) => (
+                      <span
+                        className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700"
+                        key={projectId}
+                      >
+                        {projectNameById.get(projectId) ?? "Assigned Project"}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
+                      No project assigned
+                    </span>
+                  )}
+                </div>
+
+                {selectedUser.role === "EMPLOYEE" && projects.length ? (
+                  <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-white p-4">
+                    <form action={assignProjectToUser} className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_120px]">
+                      <input name="userId" type="hidden" value={selectedUser.id} />
+                      <SelectField
+                        defaultValue=""
+                        includePlaceholder
+                        label="Assign Project"
+                        labels={Object.fromEntries(projects.map((project) => [project.id, project.name]))}
+                        name="projectId"
+                        options={projects.map((project) => project.id)}
+                        required
+                      />
+                      <div className="flex items-end">
+                        <Button className="sm:w-auto" type="submit">
+                          Assign
+                        </Button>
+                      </div>
+                    </form>
+                  </div>
+                ) : null}
+
+              </section>
+            ) : null}
+          </div>
+        )}
       </PanelSection>
 
       <PanelSection
@@ -387,7 +424,9 @@ export function EmployeesManagementPanel({
                   </span>
                 </div>
                 <p className="mt-3 text-base font-semibold text-slate-950">{update.summary}</p>
-                <p className="mt-2 text-sm text-slate-500">{update.workDate} • {update.employeeEmail}</p>
+                <p className="mt-2 text-sm text-slate-500">
+                  {update.workDate} - {update.employeeEmail}
+                </p>
                 <p className="mt-4 text-sm leading-6 text-slate-600">{update.accomplishments}</p>
                 {update.blockers ? <p className="mt-3 text-sm text-amber-700">Blockers: {update.blockers}</p> : null}
                 {update.nextPlan ? <p className="mt-2 text-sm text-slate-500">Next: {update.nextPlan}</p> : null}
@@ -445,6 +484,7 @@ function PanelSection({
 }
 
 type FieldProps = {
+  autoComplete?: string;
   defaultValue?: string;
   fallbackTodayForDate?: boolean;
   label: string;
@@ -453,7 +493,7 @@ type FieldProps = {
   type?: string;
 };
 
-function Field({ defaultValue, fallbackTodayForDate = false, label, name, placeholder, type = "text" }: FieldProps) {
+function Field({ autoComplete, defaultValue, fallbackTodayForDate = false, label, name, placeholder, type = "text" }: FieldProps) {
   const resolvedDefaultValue = type === "date" && fallbackTodayForDate ? (defaultValue || getTodayDate()) : defaultValue;
 
   return (
@@ -463,6 +503,7 @@ function Field({ defaultValue, fallbackTodayForDate = false, label, name, placeh
         className={`w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none ${
           type === "date" ? "[color-scheme:light]" : ""
         }`}
+        autoComplete={autoComplete}
         defaultValue={resolvedDefaultValue}
         name={name}
         placeholder={placeholder}
@@ -510,6 +551,7 @@ function SelectField({
   onChangeValue,
   options,
   placeholder = "Select option",
+  required = false,
 }: {
   defaultValue: string;
   includePlaceholder?: boolean;
@@ -519,6 +561,7 @@ function SelectField({
   onChangeValue?: (value: string) => void;
   options: string[];
   placeholder?: string;
+  required?: boolean;
 }) {
   return (
     <label className="block">
@@ -528,12 +571,9 @@ function SelectField({
         defaultValue={defaultValue}
         name={name}
         onChange={(event) => onChangeValue?.(event.target.value)}
+        required={required}
       >
-        {includePlaceholder ? (
-          <option value="">
-            {placeholder}
-          </option>
-        ) : null}
+        {includePlaceholder ? <option value="">{placeholder}</option> : null}
         {options.map((option) => (
           <option key={option} value={option}>
             {labels?.[option] ?? option}

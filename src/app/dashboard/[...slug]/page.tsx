@@ -16,7 +16,7 @@ import {
   getReportsPageData,
   getSettingsPageData,
   getTasksPageData,
-} from "@/lib/dashboard/mvp-data";
+} from "@/lib/dashboard/dashboard-data";
 
 type DashboardDynamicPageProps = {
   params: Promise<{

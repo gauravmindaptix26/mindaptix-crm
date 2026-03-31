@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { checkInAttendance, checkOutAttendance } from "@/actions/attendance";
 import { Button } from "@/components/ui/button";
-import type { AttendanceMonthlyRow, AttendancePageData } from "@/lib/dashboard/mvp-data";
+import { DashboardTable, DashboardTableCell } from "@/components/ui/dashboard-table";
+import type { AttendancePageData } from "@/lib/dashboard/dashboard-data";
 
 type AttendancePanelProps = {
   data: AttendancePageData;
@@ -86,14 +87,24 @@ export function AttendancePanel({ data }: AttendancePanelProps) {
         eyebrow="Monthly Report"
         title="Attendance Report"
       >
-        <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-          {data.monthlyRows.length ? (
-            data.monthlyRows.map((row) => <MonthlyCard key={row.id} row={row} />)
-          ) : (
-            <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500 md:col-span-2 xl:col-span-3">
-              Monthly attendance data will appear here after people start checking in.
-            </div>
-          )}
+        <div className="mt-6">
+          <DashboardTable
+            columns={[
+              { label: "Employee" },
+              { label: "Days Marked" },
+              { label: "Completed Checkouts" },
+            ]}
+            emptyMessage="Monthly attendance data will appear here after people start checking in."
+            hasRows={data.monthlyRows.length > 0}
+          >
+            {data.monthlyRows.map((row) => (
+              <tr key={row.id}>
+                <DashboardTableCell className="font-semibold text-slate-900">{row.employeeName}</DashboardTableCell>
+                <DashboardTableCell>{row.daysMarked}</DashboardTableCell>
+                <DashboardTableCell>{row.completedDays}</DashboardTableCell>
+              </tr>
+            ))}
+          </DashboardTable>
         </div>
       </PanelSection>
     </div>
@@ -128,16 +139,6 @@ function PanelSection({
       <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{description}</p>
       {children}
     </section>
-  );
-}
-
-function MonthlyCard({ row }: { row: AttendanceMonthlyRow }) {
-  return (
-    <article className="rounded-[1.6rem] border border-slate-100 bg-slate-50 p-5">
-      <p className="text-lg font-semibold text-slate-950">{row.employeeName}</p>
-      <p className="mt-3 text-sm text-slate-500">Days Marked: {row.daysMarked}</p>
-      <p className="mt-1 text-sm text-slate-500">Completed Checkouts: {row.completedDays}</p>
-    </article>
   );
 }
 

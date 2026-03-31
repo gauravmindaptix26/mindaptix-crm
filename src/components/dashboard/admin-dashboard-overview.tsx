@@ -4,7 +4,7 @@ import type {
   DashboardNotificationItem,
   PerformanceScoreRow,
   SummaryCard,
-} from "@/lib/dashboard/mvp-data";
+} from "@/lib/dashboard/dashboard-data";
 
 type AdminDashboardOverviewProps = {
   calendarItems?: CalendarEventItem[];

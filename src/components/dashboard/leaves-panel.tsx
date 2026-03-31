@@ -5,7 +5,8 @@ import { useActionState } from "react";
 import { applyLeaveRequest, reviewLeaveRequest } from "@/actions/leave-management";
 import { AuthFeedback } from "@/components/auth/auth-feedback";
 import { Button } from "@/components/ui/button";
-import type { LeaveEntry, LeavePageData } from "@/lib/dashboard/mvp-data";
+import { DashboardTable, DashboardTableCell } from "@/components/ui/dashboard-table";
+import type { LeavePageData } from "@/lib/dashboard/dashboard-data";
 import type { LeaveType } from "@/lib/models/leave-request";
 
 type LeavesPanelProps = {
@@ -74,14 +75,60 @@ export function LeavesPanel({ canReview, data }: LeavesPanelProps) {
           eyebrow="Leave History"
           title="Requests"
         >
-          <div className="mt-6 space-y-4">
-            {data.leaves.length ? (
-              data.leaves.map((leave) => <LeaveCard canReview={canReview} key={leave.id} leave={leave} />)
-            ) : (
-              <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">
-                No leave requests available yet.
-              </div>
-            )}
+          <div className="mt-6">
+            <DashboardTable
+              columns={[
+                { label: "Employee" },
+                { label: "Leave" },
+                { label: "Dates" },
+                { label: "Reason" },
+                { label: "Status" },
+                { label: "Action" },
+              ]}
+              emptyMessage="No leave requests available yet."
+              hasRows={data.leaves.length > 0}
+            >
+              {data.leaves.map((leave) => (
+                <tr key={leave.id}>
+                  <DashboardTableCell>
+                    <p className="font-semibold text-slate-900">{leave.employeeName}</p>
+                    <p className="mt-1 text-xs text-slate-500">{leave.employeeEmail}</p>
+                  </DashboardTableCell>
+                  <DashboardTableCell>{leave.leaveType}</DashboardTableCell>
+                  <DashboardTableCell>
+                    {leave.startDate} to {leave.endDate}
+                  </DashboardTableCell>
+                  <DashboardTableCell className="min-w-[220px]">{leave.reason}</DashboardTableCell>
+                  <DashboardTableCell>
+                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                      {leave.status}
+                    </span>
+                  </DashboardTableCell>
+                  <DashboardTableCell>
+                    {canReview && leave.status === "PENDING" ? (
+                      <div className="flex flex-wrap gap-2">
+                        <form action={reviewLeaveRequest}>
+                          <input name="leaveId" type="hidden" value={leave.id} />
+                          <input name="status" type="hidden" value="APPROVED" />
+                          <Button className="sm:w-auto" type="submit">
+                            Approve
+                          </Button>
+                        </form>
+                        <form action={reviewLeaveRequest}>
+                          <input name="leaveId" type="hidden" value={leave.id} />
+                          <input name="status" type="hidden" value="REJECTED" />
+                          <Button className="border border-slate-200 bg-white text-slate-900 shadow-none hover:bg-slate-50 sm:w-auto" type="submit">
+                            Reject
+                          </Button>
+                        </form>
+                      </div>
+                    ) : (
+                      <span className="text-sm text-slate-400">No action</span>
+                    )}
+                  </DashboardTableCell>
+                </tr>
+              ))}
+            </DashboardTable>
           </div>
         </PanelSection>
       </section>
@@ -117,48 +164,6 @@ function PanelSection({
       <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-600">{description}</p>
       {children}
     </section>
-  );
-}
-
-function LeaveCard({ canReview, leave }: { canReview: boolean; leave: LeaveEntry }) {
-  return (
-    <article className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-          {leave.employeeName}
-        </span>
-        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-          {leave.leaveType}
-        </span>
-        <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-          {leave.status}
-        </span>
-      </div>
-      <p className="mt-3 text-sm text-slate-500">{leave.employeeEmail}</p>
-      <p className="mt-2 text-sm font-medium text-slate-900">
-        {leave.startDate} to {leave.endDate}
-      </p>
-      <p className="mt-3 text-sm leading-6 text-slate-600">{leave.reason}</p>
-
-      {canReview && leave.status === "PENDING" ? (
-        <div className="mt-4 flex gap-3">
-          <form action={reviewLeaveRequest}>
-            <input name="leaveId" type="hidden" value={leave.id} />
-            <input name="status" type="hidden" value="APPROVED" />
-            <Button className="sm:w-auto" type="submit">
-              Approve
-            </Button>
-          </form>
-          <form action={reviewLeaveRequest}>
-            <input name="leaveId" type="hidden" value={leave.id} />
-            <input name="status" type="hidden" value="REJECTED" />
-            <Button className="border border-slate-200 bg-white text-slate-900 shadow-none hover:bg-slate-50 sm:w-auto" type="submit">
-              Reject
-            </Button>
-          </form>
-        </div>
-      ) : null}
-    </article>
   );
 }
 

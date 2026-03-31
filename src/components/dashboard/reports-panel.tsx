@@ -2,7 +2,8 @@
 
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
-import type { ReportsPageData } from "@/lib/dashboard/mvp-data";
+import { DashboardTable, DashboardTableCell } from "@/components/ui/dashboard-table";
+import type { ReportsPageData } from "@/lib/dashboard/dashboard-data";
 
 type ReportsPanelProps = {
   data: ReportsPageData;
@@ -67,52 +68,55 @@ export function ReportsPanel({ data }: ReportsPanelProps) {
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.95fr)]">
         <ReportSection description="Simple calendar feed for deadlines and leaves." eyebrow="Calendar" title="Planning View">
-          <div className="mt-6 space-y-3">
-            {data.calendarItems.length ? (
-              data.calendarItems.map((item) => (
-                <div className="rounded-[1.4rem] border border-slate-100 bg-slate-50 p-4" key={item.id}>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                      {item.date}
-                    </span>
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      {item.type}
-                    </span>
-                  </div>
-                  <p className="mt-3 text-sm font-semibold text-slate-900">{item.title}</p>
-                  <p className="mt-2 text-sm text-slate-500">{item.detail}</p>
-                </div>
-              ))
-            ) : (
-              <EmptyState message="No calendar items available yet." />
-            )}
+          <div className="mt-6">
+            <DashboardTable
+              columns={[
+                { label: "Date" },
+                { label: "Type" },
+                { label: "Title" },
+                { label: "Details" },
+              ]}
+              emptyMessage="No calendar items available yet."
+              hasRows={data.calendarItems.length > 0}
+            >
+              {data.calendarItems.map((item) => (
+                <tr key={item.id}>
+                  <DashboardTableCell>{item.date}</DashboardTableCell>
+                  <DashboardTableCell>{item.type}</DashboardTableCell>
+                  <DashboardTableCell className="font-semibold text-slate-900">{item.title}</DashboardTableCell>
+                  <DashboardTableCell className="min-w-[220px]">{item.detail}</DashboardTableCell>
+                </tr>
+              ))}
+            </DashboardTable>
           </div>
         </ReportSection>
 
         <ReportSection description="Simple 0-100 score based on attendance, task completion, and DSR consistency." eyebrow="Performance" title="Scoreboard">
-          <div className="mt-6 space-y-3">
-            {data.performanceRows.length ? (
-              data.performanceRows.map((row) => (
-                <div className="rounded-[1.4rem] border border-slate-100 bg-slate-50 p-4" key={row.id}>
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900">{row.employeeName}</p>
-                      <p className="mt-1 text-xs text-slate-500">{row.employeeEmail}</p>
-                    </div>
-                    <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-                      Score {row.score}
-                    </span>
-                  </div>
-                  <div className="mt-3 grid gap-2 sm:grid-cols-3">
-                    <MetricBox label="Attendance" value={`${row.attendanceRate}%`} />
-                    <MetricBox label="Tasks" value={`${row.taskCompletionRate}%`} />
-                    <MetricBox label="DSR" value={`${row.dsrConsistencyRate}%`} />
-                  </div>
-                </div>
-              ))
-            ) : (
-              <EmptyState message="Performance scores will appear after activity data is available." />
-            )}
+          <div className="mt-6">
+            <DashboardTable
+              columns={[
+                { label: "Employee" },
+                { label: "Score" },
+                { label: "Attendance" },
+                { label: "Tasks" },
+                { label: "DSR" },
+              ]}
+              emptyMessage="Performance scores will appear after activity data is available."
+              hasRows={data.performanceRows.length > 0}
+            >
+              {data.performanceRows.map((row) => (
+                <tr key={row.id}>
+                  <DashboardTableCell>
+                    <p className="font-semibold text-slate-900">{row.employeeName}</p>
+                    <p className="mt-1 text-xs text-slate-500">{row.employeeEmail}</p>
+                  </DashboardTableCell>
+                  <DashboardTableCell className="font-semibold text-slate-900">{row.score}</DashboardTableCell>
+                  <DashboardTableCell>{row.attendanceRate}%</DashboardTableCell>
+                  <DashboardTableCell>{row.taskCompletionRate}%</DashboardTableCell>
+                  <DashboardTableCell>{row.dsrConsistencyRate}%</DashboardTableCell>
+                </tr>
+              ))}
+            </DashboardTable>
           </div>
         </ReportSection>
       </section>
@@ -124,62 +128,90 @@ export function ReportsPanel({ data }: ReportsPanelProps) {
 
       <section className="grid gap-6 xl:grid-cols-3">
         <ReportSection description="Monthly marked attendance and checkout completion totals." eyebrow="Attendance Report" title="Attendance">
-          <div className="mt-6 space-y-3">
-            {filteredAttendance.length ? (
-              filteredAttendance.map((row) => (
-                <div className="rounded-[1.4rem] border border-slate-100 bg-slate-50 p-4" key={row.id}>
-                  <p className="text-sm font-semibold text-slate-900">{row.employeeName}</p>
-                  <p className="mt-2 text-sm text-slate-500">Days Marked: {row.daysMarked}</p>
-                  <p className="mt-1 text-sm text-slate-500">Completed Checkouts: {row.completedDays}</p>
-                </div>
-              ))
-            ) : (
-              <EmptyState message="No attendance report data available for the current filter." />
-            )}
+          <div className="mt-6">
+            <DashboardTable
+              columns={[
+                { label: "Employee" },
+                { label: "Days Marked" },
+                { label: "Completed Checkouts" },
+              ]}
+              emptyMessage="No attendance report data available for the current filter."
+              hasRows={filteredAttendance.length > 0}
+            >
+              {filteredAttendance.map((row) => (
+                <tr key={row.id}>
+                  <DashboardTableCell className="font-semibold text-slate-900">{row.employeeName}</DashboardTableCell>
+                  <DashboardTableCell>{row.daysMarked}</DashboardTableCell>
+                  <DashboardTableCell>{row.completedDays}</DashboardTableCell>
+                </tr>
+              ))}
+            </DashboardTable>
           </div>
         </ReportSection>
 
         <ReportSection description="Leave history in the current visible scope." eyebrow="Leave Report" title="Leaves">
-          <div className="mt-6 space-y-3">
-            {filteredLeaves.length ? (
-              filteredLeaves.map((leave) => (
-                <div className="rounded-[1.4rem] border border-slate-100 bg-slate-50 p-4" key={leave.id}>
-                  <p className="text-sm font-semibold text-slate-900">{leave.employeeName}</p>
-                  <p className="mt-2 text-sm text-slate-500">{leave.leaveType} • {leave.startDate} to {leave.endDate}</p>
-                  <p className="mt-1 text-sm text-slate-500">{leave.status}</p>
-                </div>
-              ))
-            ) : (
-              <EmptyState message="No leave report data available for the current filter." />
-            )}
+          <div className="mt-6">
+            <DashboardTable
+              columns={[
+                { label: "Employee" },
+                { label: "Leave" },
+                { label: "Dates" },
+                { label: "Reason" },
+                { label: "Status" },
+              ]}
+              emptyMessage="No leave report data available for the current filter."
+              hasRows={filteredLeaves.length > 0}
+            >
+              {filteredLeaves.map((leave) => (
+                <tr key={leave.id}>
+                  <DashboardTableCell>
+                    <p className="font-semibold text-slate-900">{leave.employeeName}</p>
+                    <p className="mt-1 text-xs text-slate-500">{leave.employeeEmail}</p>
+                  </DashboardTableCell>
+                  <DashboardTableCell>{leave.leaveType}</DashboardTableCell>
+                  <DashboardTableCell>
+                    {leave.startDate} to {leave.endDate}
+                  </DashboardTableCell>
+                  <DashboardTableCell className="min-w-[220px]">{leave.reason}</DashboardTableCell>
+                  <DashboardTableCell>{leave.status}</DashboardTableCell>
+                </tr>
+              ))}
+            </DashboardTable>
           </div>
         </ReportSection>
 
         <ReportSection description="Tasks, priority, overdue state, labels, and latest status." eyebrow="Task Report" title="Tasks">
-          <div className="mt-6 space-y-3">
-            {filteredTasks.length ? (
-              filteredTasks.map((task) => (
-                <div className={`rounded-[1.4rem] border p-4 ${task.isOverdue ? "border-red-200 bg-red-50/60" : "border-slate-100 bg-slate-50"}`} key={task.id}>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-                      {task.assignedUserName}
-                    </span>
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      {task.priority}
-                    </span>
-                    {task.labels.map((label) => (
-                      <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500" key={label}>
-                        {label}
-                      </span>
-                    ))}
-                  </div>
-                  <p className="mt-3 text-sm font-semibold text-slate-900">{task.title}</p>
-                  <p className="mt-2 text-sm text-slate-500">Due {task.dueDate} • {task.status}</p>
-                </div>
-              ))
-            ) : (
-              <EmptyState message="No task report data available for the current filter." />
-            )}
+          <div className="mt-6">
+            <DashboardTable
+              columns={[
+                { label: "Task" },
+                { label: "Assignee" },
+                { label: "Priority" },
+                { label: "Labels" },
+                { label: "Due / Status" },
+              ]}
+              emptyMessage="No task report data available for the current filter."
+              hasRows={filteredTasks.length > 0}
+            >
+              {filteredTasks.map((task) => (
+                <tr className={task.isOverdue ? "bg-red-50/40" : ""} key={task.id}>
+                  <DashboardTableCell className="min-w-[220px]">
+                    <p className="font-semibold text-slate-900">{task.title}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{task.description}</p>
+                  </DashboardTableCell>
+                  <DashboardTableCell>{task.assignedUserName}</DashboardTableCell>
+                  <DashboardTableCell>{task.priority}</DashboardTableCell>
+                  <DashboardTableCell>{task.labels.length ? task.labels.join(", ") : "No labels"}</DashboardTableCell>
+                  <DashboardTableCell>
+                    <p>{task.dueDate}</p>
+                    <p className={`mt-1 text-sm ${task.isOverdue ? "text-red-600" : "text-slate-500"}`}>
+                      {task.status.replaceAll("_", " ")}
+                      {task.isOverdue ? " (Overdue)" : ""}
+                    </p>
+                  </DashboardTableCell>
+                </tr>
+              ))}
+            </DashboardTable>
           </div>
         </ReportSection>
       </section>
@@ -215,19 +247,6 @@ function ReportSection({
       <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
       {children}
     </section>
-  );
-}
-
-function EmptyState({ message }: { message: string }) {
-  return <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">{message}</div>;
-}
-
-function MetricBox({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-[1.1rem] border border-slate-200 bg-white px-3 py-3">
-      <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-2 text-sm font-semibold text-slate-900">{value}</p>
-    </div>
   );
 }
 

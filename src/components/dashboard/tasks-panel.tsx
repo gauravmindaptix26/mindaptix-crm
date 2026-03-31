@@ -5,7 +5,8 @@ import { useActionState, useMemo, useState } from "react";
 import { addTaskComment, createTask, updateTaskStatus } from "@/actions/task-management";
 import { AuthFeedback } from "@/components/auth/auth-feedback";
 import { Button } from "@/components/ui/button";
-import type { TaskEntry, TaskPageData } from "@/lib/dashboard/mvp-data";
+import { DashboardTable, DashboardTableCell } from "@/components/ui/dashboard-table";
+import type { TaskEntry, TaskPageData } from "@/lib/dashboard/dashboard-data";
 import type { TaskPriority } from "@/lib/models/task";
 
 type TasksPanelProps = {
@@ -73,7 +74,7 @@ export function TasksPanel({ canAssign, data }: TasksPanelProps) {
             eyebrow="Assign Task"
             title="Create Task"
           >
-            <form action={formAction} className="mt-6 space-y-4" encType="multipart/form-data">
+            <form action={formAction} className="mt-6 space-y-4">
               {state.error ? <AuthFeedback>{state.error}</AuthFeedback> : null}
               {state.success ? <AuthFeedback tone="success">{state.success}</AuthFeedback> : null}
 
@@ -134,14 +135,23 @@ export function TasksPanel({ canAssign, data }: TasksPanelProps) {
             <SelectFilter label="Label" onChange={setLabelFilter} options={["ALL", ...data.labelOptions]} value={labelFilter} />
           </div>
 
-          <div className="mt-6 space-y-4">
-            {filteredTasks.length ? (
-              filteredTasks.map((task) => <TaskCard canEditStatus data={task} key={task.id} />)
-            ) : (
-              <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">
-                No tasks match the current filters.
-              </div>
-            )}
+          <div className="mt-6">
+            <DashboardTable
+              columns={[
+                { label: "Task" },
+                { label: "Assignment" },
+                { label: "Status" },
+                { label: "Priority / Labels" },
+                { label: "Files" },
+                { label: "Comments / Update" },
+              ]}
+              emptyMessage="No tasks match the current filters."
+              hasRows={filteredTasks.length > 0}
+            >
+              {filteredTasks.map((task) => (
+                <TaskRow key={task.id} task={task} />
+              ))}
+            </DashboardTable>
           </div>
         </PanelSection>
       </section>
@@ -180,62 +190,60 @@ function PanelSection({
   );
 }
 
-function TaskCard({ canEditStatus, data }: { canEditStatus: boolean; data: TaskEntry }) {
+function TaskRow({ task }: { task: TaskEntry }) {
   return (
-    <article className={`rounded-[1.5rem] border p-5 ${data.isOverdue ? "border-red-200 bg-red-50/60" : "border-slate-100 bg-slate-50"}`}>
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge tone="blue">{data.assignedUserName}</Badge>
-        <Badge tone={data.isOverdue ? "red" : "slate"}>{data.isOverdue ? `Overdue • ${data.dueDate}` : `Due ${data.dueDate}`}</Badge>
-        <Badge tone={data.priority === "HIGH" ? "red" : data.priority === "MEDIUM" ? "amber" : "emerald"}>{data.priority}</Badge>
-        {data.labels.map((label) => (
-          <Badge key={label} tone="slate">
-            {label}
+    <tr className={task.isOverdue ? "bg-red-50/40" : ""}>
+      <DashboardTableCell className="min-w-[220px]">
+        <p className="font-semibold text-slate-900">{task.title}</p>
+        <p className="mt-2 text-sm leading-6 text-slate-600">{task.description}</p>
+      </DashboardTableCell>
+      <DashboardTableCell className="min-w-[180px]">
+        <p className="font-semibold text-slate-900">{task.assignedUserName}</p>
+        <p className="mt-1 text-xs text-slate-500">Assigned by {task.assignedByName || "System"}</p>
+        <p className="mt-1 text-xs text-slate-500">Due {task.dueDate}</p>
+      </DashboardTableCell>
+      <DashboardTableCell className="min-w-[220px]">
+        <div className="flex flex-wrap gap-2">
+          <Badge tone={task.status === "COMPLETED" ? "emerald" : task.status === "IN_PROGRESS" ? "amber" : "slate"}>
+            {task.status.replaceAll("_", " ")}
           </Badge>
-        ))}
-      </div>
-      <h3 className="mt-3 text-lg font-semibold text-slate-950">{data.title}</h3>
-      <p className="mt-3 text-sm leading-6 text-slate-600">{data.description}</p>
-      <p className="mt-3 text-sm text-slate-500">Assigned by {data.assignedByName || "System"}</p>
-
-      {data.attachments.length ? (
-        <div className="mt-4 flex flex-wrap gap-2">
-          {data.attachments.map((attachment) => (
-            <a
-              className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
-              href={attachment.url}
-              key={attachment.url}
-              rel="noreferrer"
-              target="_blank"
-            >
-              {attachment.name}
-            </a>
-          ))}
+          {task.isOverdue ? <Badge tone="red">Overdue</Badge> : null}
         </div>
-      ) : null}
-
-      {canEditStatus ? (
-        <form action={updateTaskStatus} className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px]">
-          <input name="taskId" type="hidden" value={data.id} />
+        <form action={updateTaskStatus} className="mt-3 space-y-3">
+          <input name="taskId" type="hidden" value={task.id} />
           <SelectField
-            defaultValue={data.status}
+            defaultValue={task.status}
             label="Status"
             labels={{ PENDING: "Pending", IN_PROGRESS: "In Progress", COMPLETED: "Completed" }}
             name="status"
             options={["PENDING", "IN_PROGRESS", "COMPLETED"]}
           />
-          <div className="flex items-end">
-            <Button className="sm:w-auto" type="submit">
-              Save
-            </Button>
-          </div>
+          <Button className="sm:w-auto" type="submit">
+            Save
+          </Button>
         </form>
-      ) : null}
-
-      <div className="mt-5 rounded-[1.25rem] border border-slate-200 bg-white p-4">
-        <p className="text-sm font-semibold text-slate-900">Comments & Updates</p>
-        <div className="mt-3 space-y-3">
-          {data.comments.length ? (
-            data.comments.map((comment) => (
+      </DashboardTableCell>
+      <DashboardTableCell className="min-w-[220px]">
+        <div className="flex flex-wrap gap-2">
+          <Badge tone={task.priority === "HIGH" ? "red" : task.priority === "MEDIUM" ? "amber" : "emerald"}>{task.priority}</Badge>
+          {task.labels.length ? (
+            task.labels.map((label) => (
+              <Badge key={label} tone="slate">
+                {label}
+              </Badge>
+            ))
+          ) : (
+            <span className="text-sm text-slate-400">No labels</span>
+          )}
+        </div>
+      </DashboardTableCell>
+      <DashboardTableCell className="min-w-[170px]">
+        {task.attachments.length ? <AttachmentList items={task.attachments} /> : <span className="text-sm text-slate-400">No files</span>}
+      </DashboardTableCell>
+      <DashboardTableCell className="min-w-[280px]">
+        <div className="space-y-3">
+          {task.comments.length ? (
+            task.comments.map((comment) => (
               <div className="rounded-[1rem] border border-slate-100 bg-slate-50 px-4 py-3" key={comment.id}>
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="text-sm font-semibold text-slate-900">{comment.userName}</span>
@@ -250,7 +258,7 @@ function TaskCard({ canEditStatus, data }: { canEditStatus: boolean; data: TaskE
           )}
         </div>
         <form action={addTaskComment} className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px]">
-          <input name="taskId" type="hidden" value={data.id} />
+          <input name="taskId" type="hidden" value={task.id} />
           <input
             className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none"
             name="message"
@@ -263,14 +271,31 @@ function TaskCard({ canEditStatus, data }: { canEditStatus: boolean; data: TaskE
             </Button>
           </div>
         </form>
-      </div>
-    </article>
+      </DashboardTableCell>
+    </tr>
   );
 }
 
-function Badge({ children, tone }: { children: ReactNode; tone: "amber" | "blue" | "emerald" | "red" | "slate" }) {
+function AttachmentList({ items }: { items: TaskEntry["attachments"] }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {items.map((attachment) => (
+        <a
+          className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
+          href={attachment.url}
+          key={attachment.url}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {attachment.name}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function Badge({ children, tone }: { children: ReactNode; tone: "amber" | "emerald" | "red" | "slate" }) {
   const styles = {
-    blue: "border-blue-100 bg-blue-50 text-blue-700",
     emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
     amber: "border-amber-200 bg-amber-50 text-amber-700",
     red: "border-red-200 bg-red-50 text-red-700",

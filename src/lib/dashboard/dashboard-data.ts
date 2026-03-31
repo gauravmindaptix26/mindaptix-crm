@@ -455,7 +455,7 @@ export async function getEmployeesPageData(session?: AuthenticatedSession): Prom
 
   const isManagerView = session?.user.role === "MANAGER";
   const visibleEmployeeIds = session ? await getVisibleUserIdsForSession(session, { employeesOnly: true }) : [];
-  const userFilter = isManagerView ? { _id: inScope(visibleEmployeeIds), role: "EMPLOYEE" } : {};
+  const userFilter = isManagerView ? { _id: inScope(visibleEmployeeIds), role: "EMPLOYEE" } : { role: { $ne: "SUPER_ADMIN" } };
 
   const users = await UserModel.find(
     userFilter,
@@ -491,7 +491,7 @@ export async function getEmployeesPageData(session?: AuthenticatedSession): Prom
           { label: "Recent DSR", value: String(updates.length), detail: "Latest status reports submitted by your team." },
         ]
       : [
-          { label: "Total Team", value: String(activeUsers.length), detail: "Active accounts across admin, managers, and employees." },
+          { label: "Total Team", value: String(activeUsers.length), detail: "Active manager and employee accounts available in the company." },
           { label: "Managers", value: String(managerCount), detail: "Manager accounts currently active." },
           { label: "Employees", value: String(employeeCount), detail: "Employee accounts available for task and project assignment." },
           { label: "Projects", value: String(projects.length), detail: "Projects available for employee assignment and DSR mapping." },

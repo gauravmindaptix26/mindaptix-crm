@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { updateCompanySettings } from "@/actions/settings";
 import { AuthFeedback } from "@/components/auth/auth-feedback";
 import { Button } from "@/components/ui/button";
-import type { SettingsPageData } from "@/lib/dashboard/mvp-data";
+import type { SettingsPageData } from "@/lib/dashboard/dashboard-data";
 
 type SettingsPanelProps = {
   data: SettingsPageData;

@@ -5,7 +5,8 @@ import { useActionState } from "react";
 import { submitDailyUpdate } from "@/actions/daily-updates";
 import { AuthFeedback } from "@/components/auth/auth-feedback";
 import { Button } from "@/components/ui/button";
-import type { DsrPageData, EmployeeProjectView, EmployeeUpdateView } from "@/lib/dashboard/mvp-data";
+import { DashboardTable, DashboardTableCell } from "@/components/ui/dashboard-table";
+import type { DsrPageData, EmployeeProjectView } from "@/lib/dashboard/dashboard-data";
 
 type DsrPanelProps = {
   data: DsrPageData;
@@ -59,7 +60,7 @@ function EmployeeDsrPanel({ data }: { data: Extract<DsrPageData, { mode: "employ
           eyebrow="Daily Report"
           title="Submit DSR"
         >
-          <form action={formAction} className="mt-6 space-y-4" encType="multipart/form-data">
+          <form action={formAction} className="mt-6 space-y-4">
             {state.error ? <AuthFeedback>{state.error}</AuthFeedback> : null}
             {state.success ? <AuthFeedback tone="success">{state.success}</AuthFeedback> : null}
 
@@ -98,14 +99,35 @@ function EmployeeDsrPanel({ data }: { data: Extract<DsrPageData, { mode: "employ
           eyebrow="Recent DSR"
           title="History"
         >
-          <div className="mt-6 space-y-4">
-            {data.updates.length ? (
-              data.updates.map((update) => <UpdateCard key={update.id} update={update} />)
-            ) : (
-              <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">
-                No DSR entries yet. Submit your first report from the form on the left.
-              </div>
-            )}
+          <div className="mt-6">
+            <DashboardTable
+              columns={[
+                { label: "Date" },
+                { label: "Project" },
+                { label: "Summary" },
+                { label: "Completed Work" },
+                { label: "Blockers / Next" },
+                { label: "Files" },
+              ]}
+              emptyMessage="No DSR entries yet. Submit your first report from the form on the left."
+              hasRows={data.updates.length > 0}
+            >
+              {data.updates.map((update) => (
+                <tr key={update.id}>
+                  <DashboardTableCell>{update.workDate}</DashboardTableCell>
+                  <DashboardTableCell>{update.projectName}</DashboardTableCell>
+                  <DashboardTableCell className="font-semibold text-slate-900">{update.summary}</DashboardTableCell>
+                  <DashboardTableCell className="min-w-[220px]">{update.accomplishments}</DashboardTableCell>
+                  <DashboardTableCell className="min-w-[220px]">
+                    <p>{update.blockers || "No blockers"}</p>
+                    <p className="mt-2 text-xs text-slate-500">Next: {update.nextPlan || "Not added"}</p>
+                  </DashboardTableCell>
+                  <DashboardTableCell>
+                    {update.attachments.length ? <AttachmentList items={update.attachments} /> : <span className="text-sm text-slate-400">No files</span>}
+                  </DashboardTableCell>
+                </tr>
+              ))}
+            </DashboardTable>
           </div>
         </PanelSection>
       </section>
@@ -130,19 +152,19 @@ function DsrReviewPanel({ data }: { data: Extract<DsrPageData, { mode: "review" 
           eyebrow="Missing Today"
           title="Pending DSR"
         >
-          <div className="mt-6 space-y-3">
-            {data.missingEmployees.length ? (
-              data.missingEmployees.map((employee) => (
-                <div className="rounded-[1.3rem] border border-slate-100 bg-slate-50 px-4 py-3" key={employee.id}>
-                  <p className="text-sm font-semibold text-slate-900">{employee.employeeName}</p>
-                  <p className="mt-1 text-xs text-slate-500">{employee.employeeEmail}</p>
-                </div>
-              ))
-            ) : (
-              <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">
-                Everyone in this view has already submitted DSR today.
-              </div>
-            )}
+          <div className="mt-6">
+            <DashboardTable
+              columns={[{ label: "Employee" }, { label: "Email" }]}
+              emptyMessage="Everyone in this view has already submitted DSR today."
+              hasRows={data.missingEmployees.length > 0}
+            >
+              {data.missingEmployees.map((employee) => (
+                <tr key={employee.id}>
+                  <DashboardTableCell className="font-semibold text-slate-900">{employee.employeeName}</DashboardTableCell>
+                  <DashboardTableCell>{employee.employeeEmail}</DashboardTableCell>
+                </tr>
+              ))}
+            </DashboardTable>
           </div>
         </PanelSection>
 
@@ -151,28 +173,40 @@ function DsrReviewPanel({ data }: { data: Extract<DsrPageData, { mode: "review" 
           eyebrow="Review Feed"
           title="Submitted DSR"
         >
-          <div className="mt-6 space-y-4">
-            {data.updates.length ? (
-              data.updates.map((update) => (
-                <article className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5" key={update.id}>
-                  <div className="flex flex-wrap items-center gap-2">
-                    <Badge tone="blue">{update.employeeName}</Badge>
-                    <Badge tone="slate">{update.projectName}</Badge>
-                    <Badge tone="emerald">{update.workDate}</Badge>
-                  </div>
-                  <h3 className="mt-3 text-lg font-semibold text-slate-950">{update.summary}</h3>
-                  <p className="mt-2 text-sm text-slate-500">{update.employeeEmail}</p>
-                  <p className="mt-4 text-sm leading-6 text-slate-600">{update.accomplishments}</p>
-                  {update.blockers ? <p className="mt-3 text-sm text-amber-700">Blockers: {update.blockers}</p> : null}
-                  {update.nextPlan ? <p className="mt-2 text-sm text-slate-500">Next: {update.nextPlan}</p> : null}
-                  {update.attachments.length ? <AttachmentList items={update.attachments} /> : null}
-                </article>
-              ))
-            ) : (
-              <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">
-                No DSR entries available yet.
-              </div>
-            )}
+          <div className="mt-6">
+            <DashboardTable
+              columns={[
+                { label: "Employee" },
+                { label: "Date" },
+                { label: "Project" },
+                { label: "Summary" },
+                { label: "Completed Work" },
+                { label: "Blockers / Next" },
+                { label: "Files" },
+              ]}
+              emptyMessage="No DSR entries available yet."
+              hasRows={data.updates.length > 0}
+            >
+              {data.updates.map((update) => (
+                <tr key={update.id}>
+                  <DashboardTableCell>
+                    <p className="font-semibold text-slate-900">{update.employeeName}</p>
+                    <p className="mt-1 text-xs text-slate-500">{update.employeeEmail}</p>
+                  </DashboardTableCell>
+                  <DashboardTableCell>{update.workDate}</DashboardTableCell>
+                  <DashboardTableCell>{update.projectName}</DashboardTableCell>
+                  <DashboardTableCell className="font-semibold text-slate-900">{update.summary}</DashboardTableCell>
+                  <DashboardTableCell className="min-w-[220px]">{update.accomplishments}</DashboardTableCell>
+                  <DashboardTableCell className="min-w-[220px]">
+                    <p>{update.blockers || "No blockers"}</p>
+                    <p className="mt-2 text-xs text-slate-500">Next: {update.nextPlan || "Not added"}</p>
+                  </DashboardTableCell>
+                  <DashboardTableCell>
+                    {update.attachments.length ? <AttachmentList items={update.attachments} /> : <span className="text-sm text-slate-400">No files</span>}
+                  </DashboardTableCell>
+                </tr>
+              ))}
+            </DashboardTable>
           </div>
         </PanelSection>
       </section>
@@ -225,25 +259,20 @@ function ProjectCard({ project }: { project: EmployeeProjectView }) {
   );
 }
 
-function UpdateCard({ update }: { update: EmployeeUpdateView }) {
-  return (
-    <article className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5">
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge tone="blue">{update.projectName}</Badge>
-        <Badge tone="slate">{update.workDate}</Badge>
-      </div>
-      <h3 className="mt-3 text-lg font-semibold text-slate-950">{update.summary}</h3>
-      <p className="mt-4 text-sm leading-6 text-slate-600">{update.accomplishments}</p>
-      {update.blockers ? <p className="mt-3 text-sm text-amber-700">Blockers: {update.blockers}</p> : null}
-      {update.nextPlan ? <p className="mt-2 text-sm text-slate-500">Next: {update.nextPlan}</p> : null}
-      {update.attachments.length ? <AttachmentList items={update.attachments} /> : null}
-    </article>
-  );
+function Badge({ children, tone }: { children: ReactNode; tone: "amber" | "blue" | "emerald" | "red" }) {
+  const styles = {
+    blue: "border-blue-100 bg-blue-50 text-blue-700",
+    emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    amber: "border-amber-200 bg-amber-50 text-amber-700",
+    red: "border-red-200 bg-red-50 text-red-700",
+  };
+
+  return <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${styles[tone]}`}>{children}</span>;
 }
 
 function AttachmentList({ items }: { items: Array<{ name: string; url: string }> }) {
   return (
-    <div className="mt-4 flex flex-wrap gap-2">
+    <div className="flex flex-wrap gap-2">
       {items.map((item) => (
         <a
           className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
@@ -263,18 +292,6 @@ function AlertStrip({ children, tone }: { children: ReactNode; tone: "amber" | "
   const styles = tone === "amber" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-blue-200 bg-blue-50 text-blue-800";
 
   return <div className={`rounded-[1.5rem] border px-5 py-4 text-sm leading-6 ${styles}`}>{children}</div>;
-}
-
-function Badge({ children, tone }: { children: ReactNode; tone: "amber" | "blue" | "emerald" | "red" | "slate" }) {
-  const styles = {
-    blue: "border-blue-100 bg-blue-50 text-blue-700",
-    emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
-    amber: "border-amber-200 bg-amber-50 text-amber-700",
-    red: "border-red-200 bg-red-50 text-red-700",
-    slate: "border-slate-200 bg-white text-slate-500",
-  };
-
-  return <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${styles[tone]}`}>{children}</span>;
 }
 
 type FieldProps = {

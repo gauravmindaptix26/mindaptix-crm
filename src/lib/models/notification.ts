@@ -1,6 +1,7 @@
 import mongoose, { type InferSchemaType, type Model } from "mongoose";
 
 export const NOTIFICATION_TYPES = [
+  "PROJECT_ASSIGNED",
   "TASK_ASSIGNED",
   "TASK_COMMENT",
   "LEAVE_REQUESTED",

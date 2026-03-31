@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentSession } from "@/lib/auth/auth-session";
 import { assertSuperAdmin } from "@/lib/auth/user-admin";
 import connectDb from "@/lib/connectDb";
+import { createNotificationsForUsers } from "@/lib/notifications";
 import {
   PROJECT_PRIORITIES,
   PROJECT_STATUSES,
@@ -82,25 +83,45 @@ export async function assignProjectToUser(formData: FormData) {
   const session = await getCurrentSession();
   assertSuperAdmin(session);
 
-  const userId = String(formData.get("userId") ?? "");
-  const projectId = String(formData.get("projectId") ?? "");
+  const userId = String(formData.get("userId") ?? "").trim();
+  const projectId = String(formData.get("projectId") ?? "").trim();
 
   if (!userId || !projectId) {
-    throw new Error("User and project are required.");
+    return;
   }
 
   await connectDb();
 
-  const targetUser = await UserModel.findById(userId, { role: 1 }).lean();
+  const [targetUser, project] = await Promise.all([
+    UserModel.findById(userId, { role: 1, fullName: 1, projectIds: 1 }).lean(),
+    ProjectModel.findById(projectId, { name: 1 }).lean(),
+  ]);
 
   if (!targetUser || targetUser.role !== "EMPLOYEE") {
     throw new Error("Projects can only be assigned to employee accounts.");
   }
 
+  if (!project) {
+    throw new Error("Selected project was not found.");
+  }
+
+  const alreadyAssigned = (targetUser.projectIds ?? []).includes(projectId);
+
   await Promise.all([
     UserModel.findByIdAndUpdate(userId, { $addToSet: { projectIds: projectId } }),
     ProjectModel.findByIdAndUpdate(projectId, { $addToSet: { assignedUserIds: userId } }),
   ]);
+
+  if (!alreadyAssigned) {
+    await createNotificationsForUsers([userId], {
+      actorUserId: session.user.id,
+      type: "PROJECT_ASSIGNED",
+      title: "New project assigned",
+      message: `${project.name} has been assigned to you. Open DSR to start reporting work on it.`,
+      actionUrl: "/dashboard/dsr",
+      sourceKey: `project-assigned:${projectId}`,
+    });
+  }
 
   revalidatePath("/dashboard/employees");
   revalidatePath("/dashboard");

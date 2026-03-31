@@ -1,7 +1,7 @@
 import { AdminDashboardOverview } from "@/components/dashboard/admin-dashboard-overview";
 import { getCurrentSession } from "@/lib/auth/auth-session";
 import { getDisplayRoleLabel } from "@/lib/dashboard/config";
-import { getDashboardOverviewData } from "@/lib/dashboard/mvp-data";
+import { getDashboardOverviewData } from "@/lib/dashboard/dashboard-data";
 
 export default async function DashboardPage() {
   const session = await getCurrentSession();
