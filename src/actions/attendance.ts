@@ -47,6 +47,12 @@ export async function checkOutAttendance() {
   const now = new Date();
   const dateKey = now.toISOString().slice(0, 10);
 
+  const existingAttendance = await AttendanceModel.findOne({ userId: session.user.id, dateKey }).lean();
+
+  if (!existingAttendance) {
+    throw new Error("Check in first before checking out.");
+  }
+
   await AttendanceModel.findOneAndUpdate(
     { userId: session.user.id, dateKey },
     {

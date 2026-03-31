@@ -3,7 +3,10 @@
 import { revalidatePath } from "next/cache";
 import { getCurrentSession } from "@/lib/auth/auth-session";
 import connectDb from "@/lib/connectDb";
+import { getAdminUserIds, createNotificationsForUsers } from "@/lib/notifications";
 import { DailyUpdateModel } from "@/lib/models/daily-update";
+import { UserModel } from "@/lib/models/user";
+import { saveDsrAttachments } from "@/lib/uploads/work-attachments";
 
 type DailyUpdateState = {
   error?: string;
@@ -38,6 +41,9 @@ export async function submitDailyUpdate(
   const nextPlan = String(formData.get("nextPlan") ?? "").trim();
   const projectId = String(formData.get("projectId") ?? "").trim();
   const workDate = String(formData.get("workDate") ?? "").trim();
+  const attachmentFiles = formData
+    .getAll("attachments")
+    .filter((value): value is File => value instanceof File && value.size > 0);
 
   if (summary.length < 6 || summary.length > 200) {
     return {
@@ -68,6 +74,7 @@ export async function submitDailyUpdate(
   }
 
   await connectDb();
+  const attachments = await saveDsrAttachments(attachmentFiles);
 
   await DailyUpdateModel.findOneAndUpdate(
     { userId: session.user.id, workDate },
@@ -79,9 +86,25 @@ export async function submitDailyUpdate(
       accomplishments,
       blockers,
       nextPlan,
+      attachments,
     },
     { upsert: true, new: true, setDefaultsOnInsert: true },
   );
+
+  const reportingManager = await UserModel.findById(session.user.managerId, { _id: 1, status: 1 }).lean();
+  const adminRecipients = await getAdminUserIds();
+  const recipients = [
+    ...(reportingManager?.status === "ACTIVE" ? [reportingManager._id.toString()] : []),
+    ...adminRecipients,
+  ];
+  await createNotificationsForUsers(recipients, {
+    actorUserId: session.user.id,
+    type: "DSR_SUBMITTED",
+    title: "DSR submitted",
+    message: `${session.user.fullName} submitted the DSR for ${workDate}.`,
+    actionUrl: "/dashboard/dsr",
+    sourceKey: `dsr-submitted:${session.user.id}:${workDate}`,
+  });
 
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/dsr");

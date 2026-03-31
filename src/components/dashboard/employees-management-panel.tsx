@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useActionState } from "react";
+import { useActionState, useMemo, useState } from "react";
 import { assignProjectToUser, createManagedProject } from "@/actions/project-management";
 import { createManagedUser, updateManagedUserAccess } from "@/actions/user-management";
 import { AuthFeedback } from "@/components/auth/auth-feedback";
@@ -49,7 +49,24 @@ export function EmployeesManagementPanel({
 }: EmployeesManagementPanelProps) {
   const [userState, createUserAction, userPending] = useActionState(createManagedUser, INITIAL_USER_MANAGEMENT_STATE);
   const [projectState, createProjectAction, projectPending] = useActionState(createManagedProject, INITIAL_PROJECT_STATE);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [roleFilter, setRoleFilter] = useState("ALL");
   const projectNameById = new Map(projects.map((project) => [project.id, project.name]));
+  const filteredUsers = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+
+    return users.filter((user) => {
+      if (roleFilter !== "ALL" && user.role !== roleFilter) {
+        return false;
+      }
+
+      if (!query) {
+        return true;
+      }
+
+      return [user.fullName, user.email, user.phone, user.managerName, user.role, user.status].join(" ").toLowerCase().includes(query);
+    });
+  }, [roleFilter, searchTerm, users]);
 
   return (
     <div className="space-y-6 px-5 py-5 sm:px-7 sm:py-6">
@@ -187,8 +204,28 @@ export function EmployeesManagementPanel({
         eyebrow="Directory"
         title={readOnly ? "Team Employees" : "Employee Directory"}
       >
+        <div className="mt-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-slate-700">Search Employees</span>
+            <input
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none"
+              onChange={(event) => setSearchTerm(event.target.value)}
+              placeholder="Search by name, email, phone, or manager"
+              value={searchTerm}
+            />
+          </label>
+          <SelectField
+            defaultValue="ALL"
+            label="Role Filter"
+            labels={{ ALL: "All Roles", EMPLOYEE: "Employee", MANAGER: "Manager", SUPER_ADMIN: "Admin" }}
+            name="directoryRoleFilter"
+            onChangeValue={setRoleFilter}
+            options={["ALL", "EMPLOYEE", "MANAGER", "SUPER_ADMIN"]}
+          />
+        </div>
+
         <div className="mt-6 space-y-5">
-          {users.map((user) => (
+          {filteredUsers.map((user) => (
             <article className="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-5" key={user.id}>
               {readOnly ? (
                 <div className="space-y-5">
@@ -470,6 +507,7 @@ function SelectField({
   label,
   labels,
   name,
+  onChangeValue,
   options,
   placeholder = "Select option",
 }: {
@@ -478,6 +516,7 @@ function SelectField({
   label: string;
   labels?: Record<string, string>;
   name: string;
+  onChangeValue?: (value: string) => void;
   options: string[];
   placeholder?: string;
 }) {
@@ -488,6 +527,7 @@ function SelectField({
         className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none"
         defaultValue={defaultValue}
         name={name}
+        onChange={(event) => onChangeValue?.(event.target.value)}
       >
         {includePlaceholder ? (
           <option value="">

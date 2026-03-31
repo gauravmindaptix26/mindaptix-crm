@@ -4,7 +4,9 @@ import { revalidatePath } from "next/cache";
 import { getCurrentSession } from "@/lib/auth/auth-session";
 import connectDb from "@/lib/connectDb";
 import { getManagerTeamUserIds } from "@/lib/dashboard/team-scope";
+import { createNotificationsForUsers, getAdminUserIds } from "@/lib/notifications";
 import { LEAVE_STATUSES, LEAVE_TYPES, LeaveRequestModel, type LeaveStatus, type LeaveType } from "@/lib/models/leave-request";
+import { UserModel } from "@/lib/models/user";
 
 type LeaveState = {
   error?: string;
@@ -43,12 +45,25 @@ export async function applyLeaveRequest(_previousState: LeaveState, formData: Fo
 
   await connectDb();
 
-  await LeaveRequestModel.create({
+  const requester = await UserModel.findById(session.user.id, { managerId: 1 }).lean();
+
+  const leaveRequest = await LeaveRequestModel.create({
     userId: session.user.id,
     leaveType,
     startDate,
     endDate,
     reason,
+  });
+
+  const adminRecipients = await getAdminUserIds();
+  const recipients = [...adminRecipients, requester?.managerId ?? ""].filter(Boolean);
+  await createNotificationsForUsers(recipients, {
+    actorUserId: session.user.id,
+    type: "LEAVE_REQUESTED",
+    title: "New leave request",
+    message: `${session.user.fullName} requested ${leaveType.toLowerCase()} leave from ${startDate} to ${endDate}.`,
+    actionUrl: "/dashboard/leaves",
+    sourceKey: `leave-requested:${leaveRequest._id.toString()}`,
   });
 
   revalidatePath("/dashboard/leaves");
@@ -94,6 +109,15 @@ export async function reviewLeaveRequest(formData: FormData) {
   await LeaveRequestModel.findByIdAndUpdate(leaveId, {
     status,
     reviewedByUserId: session.user.id,
+  });
+
+  await createNotificationsForUsers([leaveRequest.userId], {
+    actorUserId: session.user.id,
+    type: "LEAVE_REVIEWED",
+    title: `Leave ${status === "APPROVED" ? "approved" : "rejected"}`,
+    message: `Your leave request has been ${status.toLowerCase()} by ${session.user.fullName}.`,
+    actionUrl: "/dashboard/leaves",
+    sourceKey: `leave-reviewed:${leaveId}:${status}`,
   });
 
   revalidatePath("/dashboard/leaves");

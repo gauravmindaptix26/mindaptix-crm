@@ -18,17 +18,17 @@ export function LoginCard({ registered = false, signupClosed = false }: LoginCar
   const [state, formAction, pending] = useActionState(loginUser, INITIAL_AUTH_FORM_STATE);
 
   return (
-    <Card className="crm-panel w-full max-w-[33rem] rounded-[2rem] px-6 py-5 sm:px-9 sm:py-6">
+    <Card className="crm-panel w-full max-w-[30rem] rounded-[2rem] px-5 py-3.5 sm:px-7 sm:py-4">
       <div className="text-center">
-        <h2 className="text-[2rem] font-semibold tracking-tight text-white sm:text-[2.5rem]">
-          Welcome Back to{" "}
-          <span className="bg-gradient-to-r from-blue-300 to-blue-500 bg-clip-text text-transparent">
+        <h2 className="text-[1.7rem] font-semibold tracking-tight text-white sm:text-[2.1rem]">
+          <span className="inline-block min-w-[18rem] whitespace-nowrap sm:min-w-[20rem]">Welcome Back to</span>{" "}
+          <span className="mt-1 block whitespace-nowrap bg-gradient-to-r from-blue-300 to-blue-500 bg-clip-text text-transparent">
             Mindaptix CRM
           </span>
         </h2>
       </div>
 
-      <form action={formAction} autoComplete="off" className="mt-6 space-y-3.5">
+      <form action={formAction} autoComplete="off" className="mt-4 space-y-2.5">
         {registered ? <AuthFeedback tone="success">Account created. Please log in to continue.</AuthFeedback> : null}
         {state.error ? <AuthFeedback>{state.error}</AuthFeedback> : null}
         <AuthFeedback tone="success">
@@ -51,33 +51,35 @@ export function LoginCard({ registered = false, signupClosed = false }: LoginCar
 
         <TextField
           autoComplete="new-password"
+          className="px-3 py-2.5 text-[0.95rem]"
           label="Password"
           name="password"
           placeholder="Password"
           required
           trailing={<EyeIcon />}
+          trailingClassName="pr-3 [&_svg]:h-[18px] [&_svg]:w-[18px]"
           type="password"
         />
         {state.fieldErrors?.password ? (
           <p className="px-1 text-sm text-red-300">{state.fieldErrors.password}</p>
         ) : null}
 
-        <Button className="mt-2" disabled={pending} type="submit">
+        <Button className="mt-1" disabled={pending} type="submit">
           {pending ? "Logging in..." : "Login"}
         </Button>
       </form>
 
-      <div className="mt-5 flex items-center gap-4 text-sm text-slate-400">
+      <div className="mt-3.5 flex items-center gap-4 text-sm text-slate-400">
         <span className="h-px flex-1 bg-white/12" />
         <span>or</span>
         <span className="h-px flex-1 bg-white/12" />
       </div>
 
-      <Button className="mt-5" disabled icon={<GoogleMark />} variant="secondary">
+      <Button className="mt-3.5" disabled icon={<GoogleMark />} variant="secondary">
         Login with Google
       </Button>
 
-      <p className="mt-6 text-center text-sm text-slate-400">
+      <p className="mt-4 text-center text-sm text-slate-400">
         {signupClosed ? (
           "Need an account? Contact your SUPER_ADMIN to create one for you."
         ) : (

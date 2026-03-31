@@ -104,9 +104,9 @@ export function DashboardShell({ children, session }: DashboardShellProps) {
           />
         ) : null}
 
-        <section className="flex min-w-0 flex-1 flex-col overflow-y-auto px-4 py-4 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden lg:h-screen lg:px-7 lg:py-6">
+        <section className="flex min-w-0 flex-1 flex-col overflow-y-auto px-4 py-2 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden lg:h-screen lg:px-7 lg:py-3">
           <div className="rounded-[2rem] border border-white/60 bg-white/78 shadow-[0_30px_90px_rgba(59,130,246,0.12)] backdrop-blur-xl">
-            <header className="border-b border-slate-200/70 px-5 py-5 sm:px-7">
+            <header className="px-5 pb-0 pt-3 sm:px-7">
               <div className="flex items-start gap-3">
                 <button
                   aria-label="Open sidebar"
@@ -116,12 +116,6 @@ export function DashboardShell({ children, session }: DashboardShellProps) {
                 >
                   <HamburgerIcon />
                 </button>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-blue-200 bg-blue-50 px-4 py-1.5 text-[0.68rem] font-semibold uppercase tracking-[0.22em] text-blue-700">
-                    {getDisplayRoleLabel(session.user.role)}
-                  </span>
-                </div>
               </div>
             </header>
 

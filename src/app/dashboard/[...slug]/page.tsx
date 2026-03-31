@@ -77,6 +77,10 @@ export default async function DashboardDynamicPage({ params }: DashboardDynamicP
       return <DsrPanel data={data} />;
     }
     case "reports": {
+      if (session.user.role === "EMPLOYEE") {
+        notFound();
+      }
+
       const data = await getReportsPageData(session);
       return <ReportsPanel data={data} />;
     }

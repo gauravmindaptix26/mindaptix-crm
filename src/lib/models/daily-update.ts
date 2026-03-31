@@ -1,5 +1,23 @@
 import mongoose, { type InferSchemaType, type Model } from "mongoose";
 
+const dailyUpdateAttachmentSchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 180,
+    },
+    url: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 260,
+    },
+  },
+  { _id: false },
+);
+
 const dailyUpdateSchema = new mongoose.Schema(
   {
     userId: {
@@ -41,6 +59,10 @@ const dailyUpdateSchema = new mongoose.Schema(
       trim: true,
       maxlength: 600,
       default: "",
+    },
+    attachments: {
+      type: [dailyUpdateAttachmentSchema],
+      default: [],
     },
   },
   {

@@ -6,6 +6,7 @@ type TextFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size"> & {
   label: string;
   icon?: ReactNode;
   trailing?: ReactNode;
+  trailingClassName?: string;
 };
 
 export function TextField({
@@ -13,6 +14,7 @@ export function TextField({
   icon,
   label,
   trailing,
+  trailingClassName = "",
   ...props
 }: TextFieldProps) {
   const isPasswordField = props.type === "password";
@@ -37,14 +39,14 @@ export function TextField({
           isPasswordField ? (
             <button
               aria-label={isPasswordVisible ? "Hide password" : "Show password"}
-              className="pr-4 text-slate-400 transition duration-200 group-focus-within:text-blue-300"
+              className={`pr-4 text-slate-400 transition duration-200 group-focus-within:text-blue-300 ${trailingClassName}`}
               onClick={() => setIsPasswordVisible((value) => !value)}
               type="button"
             >
               {trailing}
             </button>
           ) : (
-            <span className="pr-4 text-slate-400 transition duration-200 group-focus-within:text-blue-300">
+            <span className={`pr-4 text-slate-400 transition duration-200 group-focus-within:text-blue-300 ${trailingClassName}`}>
               {trailing}
             </span>
           )

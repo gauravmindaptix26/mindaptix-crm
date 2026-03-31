@@ -29,7 +29,7 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
   { key: "leaves", label: "Leaves", href: "/dashboard/leaves", allowedRoles: ["SUPER_ADMIN", "MANAGER", "EMPLOYEE"] },
   { key: "tasks", label: "Tasks", href: "/dashboard/tasks", allowedRoles: ["SUPER_ADMIN", "MANAGER", "EMPLOYEE"] },
   { key: "dsr", label: "DSR", href: "/dashboard/dsr", allowedRoles: ["SUPER_ADMIN", "MANAGER", "EMPLOYEE"] },
-  { key: "reports", label: "Reports", href: "/dashboard/reports", allowedRoles: ["SUPER_ADMIN", "MANAGER", "EMPLOYEE"] },
+  { key: "reports", label: "Reports", href: "/dashboard/reports", allowedRoles: ["SUPER_ADMIN", "MANAGER"] },
   { key: "settings", label: "Settings", href: "/dashboard/settings", allowedRoles: ["SUPER_ADMIN"] },
 ];
 

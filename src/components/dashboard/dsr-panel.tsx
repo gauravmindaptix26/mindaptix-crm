@@ -37,6 +37,8 @@ function EmployeeDsrPanel({ data }: { data: Extract<DsrPageData, { mode: "employ
         ))}
       </section>
 
+      <AlertStrip tone={data.reminderMessage.includes("pending") ? "amber" : "blue"}>{data.reminderMessage}</AlertStrip>
+
       <section className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-[0_18px_45px_rgba(15,23,42,0.06)]">
         <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-500">Assigned Projects</p>
         <h2 className="mt-3 text-3xl font-semibold tracking-tight text-slate-950">Project Details</h2>
@@ -53,22 +55,16 @@ function EmployeeDsrPanel({ data }: { data: Extract<DsrPageData, { mode: "employ
 
       <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
         <PanelSection
-          description="Fill your daily status report with today’s work, blockers, and tomorrow’s plan."
+          description="Fill your daily status report with work done, blockers, tomorrow’s plan, and proof files when needed."
           eyebrow="Daily Report"
           title="Submit DSR"
         >
-          <form action={formAction} className="mt-6 space-y-4">
+          <form action={formAction} className="mt-6 space-y-4" encType="multipart/form-data">
             {state.error ? <AuthFeedback>{state.error}</AuthFeedback> : null}
             {state.success ? <AuthFeedback tone="success">{state.success}</AuthFeedback> : null}
 
             <div className="grid gap-4 md:grid-cols-2">
-              <Field
-                defaultValue={state.values?.workDate}
-                label="Work Date"
-                name="workDate"
-                placeholder="Select date"
-                type="date"
-              />
+              <Field defaultValue={state.values?.workDate} label="Work Date" name="workDate" placeholder="Select date" type="date" />
               <SelectField
                 defaultValue={state.values?.projectId ?? ""}
                 includePlaceholder
@@ -87,18 +83,9 @@ function EmployeeDsrPanel({ data }: { data: Extract<DsrPageData, { mode: "employ
               name="accomplishments"
               placeholder="Explain today’s completed work"
             />
-            <TextAreaField
-              defaultValue={state.values?.blockers}
-              label="Blockers"
-              name="blockers"
-              placeholder="Mention blockers or dependencies"
-            />
-            <TextAreaField
-              defaultValue={state.values?.nextPlan}
-              label="Tomorrow Plan"
-              name="nextPlan"
-              placeholder="Write what you will do next"
-            />
+            <TextAreaField defaultValue={state.values?.blockers} label="Blockers" name="blockers" placeholder="Mention blockers or dependencies" />
+            <TextAreaField defaultValue={state.values?.nextPlan} label="Tomorrow Plan" name="nextPlan" placeholder="Write what you will do next" />
+            <FileField label="Proof Files" multiple name="attachments" />
 
             <Button className="sm:w-auto" disabled={pending} type="submit">
               {pending ? "Submitting..." : "Submit DSR"}
@@ -135,6 +122,8 @@ function DsrReviewPanel({ data }: { data: Extract<DsrPageData, { mode: "review" 
         ))}
       </section>
 
+      <AlertStrip tone={data.reminderMessage.includes("after 7 PM") ? "amber" : "blue"}>{data.reminderMessage}</AlertStrip>
+
       <section className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
         <PanelSection
           description="Employees who still need to fill their daily status report today."
@@ -158,7 +147,7 @@ function DsrReviewPanel({ data }: { data: Extract<DsrPageData, { mode: "review" 
         </PanelSection>
 
         <PanelSection
-          description="Latest employee reports with completed work, blockers, and next plan."
+          description="Latest employee reports with completed work, blockers, next plan, and uploaded proof."
           eyebrow="Review Feed"
           title="Submitted DSR"
         >
@@ -167,21 +156,16 @@ function DsrReviewPanel({ data }: { data: Extract<DsrPageData, { mode: "review" 
               data.updates.map((update) => (
                 <article className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5" key={update.id}>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-                      {update.employeeName}
-                    </span>
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                      {update.projectName}
-                    </span>
-                    <span className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
-                      {update.workDate}
-                    </span>
+                    <Badge tone="blue">{update.employeeName}</Badge>
+                    <Badge tone="slate">{update.projectName}</Badge>
+                    <Badge tone="emerald">{update.workDate}</Badge>
                   </div>
                   <h3 className="mt-3 text-lg font-semibold text-slate-950">{update.summary}</h3>
                   <p className="mt-2 text-sm text-slate-500">{update.employeeEmail}</p>
                   <p className="mt-4 text-sm leading-6 text-slate-600">{update.accomplishments}</p>
                   {update.blockers ? <p className="mt-3 text-sm text-amber-700">Blockers: {update.blockers}</p> : null}
                   {update.nextPlan ? <p className="mt-2 text-sm text-slate-500">Next: {update.nextPlan}</p> : null}
+                  {update.attachments.length ? <AttachmentList items={update.attachments} /> : null}
                 </article>
               ))
             ) : (
@@ -231,12 +215,8 @@ function ProjectCard({ project }: { project: EmployeeProjectView }) {
   return (
     <article className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-          {formatLabel(project.status)}
-        </span>
-        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-          {formatLabel(project.priority)}
-        </span>
+        <Badge tone="blue">{formatLabel(project.status)}</Badge>
+        <Badge tone={project.priority === "HIGH" ? "red" : project.priority === "MEDIUM" ? "amber" : "emerald"}>{formatLabel(project.priority)}</Badge>
       </div>
       <h3 className="mt-3 text-lg font-semibold text-slate-950">{project.name}</h3>
       <p className="mt-3 text-sm leading-6 text-slate-600">{project.summary}</p>
@@ -249,19 +229,52 @@ function UpdateCard({ update }: { update: EmployeeUpdateView }) {
   return (
     <article className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5">
       <div className="flex flex-wrap items-center gap-2">
-        <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-          {update.projectName}
-        </span>
-        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-          {update.workDate}
-        </span>
+        <Badge tone="blue">{update.projectName}</Badge>
+        <Badge tone="slate">{update.workDate}</Badge>
       </div>
       <h3 className="mt-3 text-lg font-semibold text-slate-950">{update.summary}</h3>
       <p className="mt-4 text-sm leading-6 text-slate-600">{update.accomplishments}</p>
       {update.blockers ? <p className="mt-3 text-sm text-amber-700">Blockers: {update.blockers}</p> : null}
       {update.nextPlan ? <p className="mt-2 text-sm text-slate-500">Next: {update.nextPlan}</p> : null}
+      {update.attachments.length ? <AttachmentList items={update.attachments} /> : null}
     </article>
   );
+}
+
+function AttachmentList({ items }: { items: Array<{ name: string; url: string }> }) {
+  return (
+    <div className="mt-4 flex flex-wrap gap-2">
+      {items.map((item) => (
+        <a
+          className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700"
+          href={item.url}
+          key={item.url}
+          rel="noreferrer"
+          target="_blank"
+        >
+          {item.name}
+        </a>
+      ))}
+    </div>
+  );
+}
+
+function AlertStrip({ children, tone }: { children: ReactNode; tone: "amber" | "blue" }) {
+  const styles = tone === "amber" ? "border-amber-200 bg-amber-50 text-amber-800" : "border-blue-200 bg-blue-50 text-blue-800";
+
+  return <div className={`rounded-[1.5rem] border px-5 py-4 text-sm leading-6 ${styles}`}>{children}</div>;
+}
+
+function Badge({ children, tone }: { children: ReactNode; tone: "amber" | "blue" | "emerald" | "red" | "slate" }) {
+  const styles = {
+    blue: "border-blue-100 bg-blue-50 text-blue-700",
+    emerald: "border-emerald-200 bg-emerald-50 text-emerald-700",
+    amber: "border-amber-200 bg-amber-50 text-amber-700",
+    red: "border-red-200 bg-red-50 text-red-700",
+    slate: "border-slate-200 bg-white text-slate-500",
+  };
+
+  return <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${styles[tone]}`}>{children}</span>;
 }
 
 type FieldProps = {
@@ -324,11 +337,7 @@ function SelectField({
   return (
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
-      <select
-        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none"
-        defaultValue={defaultValue}
-        name={name}
-      >
+      <select className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none" defaultValue={defaultValue} name={name}>
         {includePlaceholder ? <option value="">{placeholder}</option> : null}
         {options.map((option) => (
           <option key={option} value={option}>
@@ -340,9 +349,24 @@ function SelectField({
   );
 }
 
+function FileField({ label, multiple = false, name }: { label: string; multiple?: boolean; name: string }) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
+      <input
+        className="w-full rounded-2xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-600"
+        multiple={multiple}
+        name={name}
+        type="file"
+      />
+    </label>
+  );
+}
+
 function formatLabel(value: string) {
   return value
+    .toLowerCase()
     .split("_")
-    .map((segment) => segment.charAt(0) + segment.slice(1).toLowerCase())
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }

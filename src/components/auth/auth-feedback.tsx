@@ -4,10 +4,10 @@ type AuthFeedbackProps = {
 };
 
 const toneClasses = {
-  error: "border-red-400/20 bg-red-500/10 text-red-100",
-  success: "border-emerald-400/20 bg-emerald-500/10 text-emerald-100",
+  error: "border-red-200 bg-red-50 text-red-800 shadow-[0_10px_25px_rgba(239,68,68,0.08)]",
+  success: "border-emerald-200 bg-emerald-50 text-emerald-800 shadow-[0_10px_25px_rgba(16,185,129,0.08)]",
 } as const;
 
 export function AuthFeedback({ children, tone = "error" }: AuthFeedbackProps) {
-  return <div className={`rounded-2xl border px-4 py-3 text-sm ${toneClasses[tone]}`}>{children}</div>;
+  return <div className={`rounded-2xl border px-4 py-3 text-sm font-medium ${toneClasses[tone]}`}>{children}</div>;
 }
