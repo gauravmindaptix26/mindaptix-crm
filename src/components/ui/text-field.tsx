@@ -1,4 +1,6 @@
-import type { InputHTMLAttributes, ReactNode } from "react";
+"use client";
+
+import { useState, type InputHTMLAttributes, type ReactNode } from "react";
 
 type TextFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, "size"> & {
   label: string;
@@ -13,6 +15,10 @@ export function TextField({
   trailing,
   ...props
 }: TextFieldProps) {
+  const isPasswordField = props.type === "password";
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+  const resolvedType = isPasswordField && isPasswordVisible ? "text" : props.type;
+
   return (
     <label className="block">
       <span className="sr-only">{label}</span>
@@ -25,11 +31,23 @@ export function TextField({
         <input
           className={`min-w-0 flex-1 bg-transparent px-4 py-3 text-base text-white outline-none placeholder:text-slate-500 ${className}`}
           {...props}
+          type={resolvedType}
         />
         {trailing ? (
-          <span className="pr-4 text-slate-400 transition duration-200 group-focus-within:text-blue-300">
-            {trailing}
-          </span>
+          isPasswordField ? (
+            <button
+              aria-label={isPasswordVisible ? "Hide password" : "Show password"}
+              className="pr-4 text-slate-400 transition duration-200 group-focus-within:text-blue-300"
+              onClick={() => setIsPasswordVisible((value) => !value)}
+              type="button"
+            >
+              {trailing}
+            </button>
+          ) : (
+            <span className="pr-4 text-slate-400 transition duration-200 group-focus-within:text-blue-300">
+              {trailing}
+            </span>
+          )
         ) : null}
       </div>
     </label>
