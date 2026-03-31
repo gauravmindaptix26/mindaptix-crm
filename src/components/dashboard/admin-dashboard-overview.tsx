@@ -3,6 +3,9 @@ import type { DashboardListItem, SummaryCard } from "@/lib/dashboard/mvp-data";
 type AdminDashboardOverviewProps = {
   cards: SummaryCard[];
   description: string;
+  directoryEmptyMessage?: string;
+  directoryItems?: DashboardListItem[];
+  directoryTitle?: string;
   primaryEmptyMessage: string;
   primaryItems: DashboardListItem[];
   primaryListTitle: string;
@@ -15,6 +18,9 @@ type AdminDashboardOverviewProps = {
 export function AdminDashboardOverview({
   cards,
   description,
+  directoryEmptyMessage,
+  directoryItems,
+  directoryTitle,
   primaryEmptyMessage,
   primaryItems,
   primaryListTitle,
@@ -48,6 +54,10 @@ export function AdminDashboardOverview({
         <ListPanel emptyMessage={primaryEmptyMessage} items={primaryItems} title={primaryListTitle} />
         <ListPanel emptyMessage={secondaryEmptyMessage} items={secondaryItems} title={secondaryListTitle} />
       </section>
+
+      {directoryTitle && directoryItems ? (
+        <ListPanel emptyMessage={directoryEmptyMessage ?? "No records available."} items={directoryItems} title={directoryTitle} />
+      ) : null}
     </div>
   );
 }

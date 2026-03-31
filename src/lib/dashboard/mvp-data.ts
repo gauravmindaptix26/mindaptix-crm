@@ -27,6 +27,9 @@ export type DashboardOverviewData = {
   title: string;
   description: string;
   cards: SummaryCard[];
+  directoryEmptyMessage?: string;
+  directoryItems?: DashboardListItem[];
+  directoryTitle?: string;
   primaryListTitle: string;
   primaryEmptyMessage: string;
   primaryItems: DashboardListItem[];
@@ -202,10 +205,10 @@ export async function getDashboardOverviewData(session: AuthenticatedSession): P
   const today = getTodayDate();
 
   if (session.user.role === "SUPER_ADMIN") {
-    const activeStaffFilter = { role: { $ne: "SUPER_ADMIN" as const }, status: "ACTIVE" as const };
+    const activeEmployeeFilter = { role: "EMPLOYEE" as const, status: "ACTIVE" as const };
 
-    const [totalEmployees, todaysAttendance, pendingLeaves, pendingTasks, leaveRows, taskRows] = await Promise.all([
-      UserModel.countDocuments(activeStaffFilter),
+    const [totalEmployees, todaysAttendance, pendingLeaves, pendingTasks, leaveRows, taskRows, employeeRows] = await Promise.all([
+      UserModel.countDocuments(activeEmployeeFilter),
       AttendanceModel.countDocuments({ dateKey: today }),
       LeaveRequestModel.countDocuments({ status: "PENDING" }),
       TaskModel.countDocuments({ status: { $ne: "COMPLETED" } }),
@@ -216,6 +219,9 @@ export async function getDashboardOverviewData(session: AuthenticatedSession): P
       TaskModel.find({}, { title: 1, dueDate: 1, status: 1, assignedUserId: 1 })
         .sort({ createdAt: -1 })
         .limit(5)
+        .lean(),
+      UserModel.find(activeEmployeeFilter, { fullName: 1, email: 1, phone: 1, joiningDate: 1 })
+        .sort({ fullName: 1 })
         .lean(),
     ]);
 
@@ -230,12 +236,20 @@ export async function getDashboardOverviewData(session: AuthenticatedSession): P
       title: "Admin Dashboard",
       description: "Simple company overview for employees, attendance, leaves, and task movement.",
       cards: [
-        { label: "Total Employees", value: String(totalEmployees), detail: "Active manager and employee accounts." },
+        { label: "Total Employees", value: String(totalEmployees), detail: "Active employee accounts in the company." },
         { label: "Present Today", value: String(todaysAttendance), detail: "Attendance marked today." },
         { label: "Absent Today", value: String(absentToday), detail: "Active staff without attendance today." },
         { label: "Pending Leaves", value: String(pendingLeaves), detail: "Leave requests waiting for admin review." },
         { label: "Pending Tasks", value: String(pendingTasks), detail: "Tasks that are not completed yet." },
       ],
+      directoryTitle: "Employees",
+      directoryEmptyMessage: "No active employees available right now.",
+      directoryItems: employeeRows.map((employee) => ({
+        id: employee._id.toString(),
+        title: employee.fullName,
+        meta: employee.joiningDate ? `Joined ${formatDate(employee.joiningDate)}` : "Joining date not added",
+        description: [employee.email, employee.phone || "Phone not added"].join(" • "),
+      })),
       primaryListTitle: "Recent Leave Requests",
       primaryEmptyMessage: "No leave requests available right now.",
       primaryItems: leaveRows.map((row) => ({

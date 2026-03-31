@@ -15,6 +15,9 @@ export default async function DashboardPage() {
     <AdminDashboardOverview
       cards={overview.cards}
       description={overview.description}
+      directoryEmptyMessage={overview.directoryEmptyMessage}
+      directoryItems={overview.directoryItems}
+      directoryTitle={overview.directoryTitle}
       primaryEmptyMessage={overview.primaryEmptyMessage}
       primaryItems={overview.primaryItems}
       primaryListTitle={overview.primaryListTitle}
