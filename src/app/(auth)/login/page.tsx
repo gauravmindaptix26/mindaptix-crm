@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import { LoginScreen } from "@/components/auth/login-screen";
-import { getCurrentSession } from "@/lib/auth/auth-session";
-import { isPublicRegistrationOpen } from "@/lib/auth/user-admin";
+import { LoginScreen } from "@/features/auth/components/login-screen";
+import { getCurrentSession } from "@/features/auth/lib/auth-session";
+import { isPublicRegistrationOpen } from "@/features/auth/lib/user-admin";
 
 type LoginPageProps = {
   searchParams: Promise<{
@@ -22,3 +22,5 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return <LoginScreen registered={registered} signupClosed={signupClosed} />;
 }
+
+

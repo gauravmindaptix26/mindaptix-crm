@@ -1,0 +1,1328 @@
+import "server-only";
+import type { AuthenticatedSession } from "@/features/auth/lib/auth-session";
+import connectDb from "@/database/mongodb/connect";
+import { getVisibleUserIdsForSession } from "@/features/dashboard/team-scope";
+import { syncWorkflowNotifications, getNotificationsForUser } from "@/features/notifications/service";
+import { AttendanceModel } from "@/database/mongodb/models/attendance";
+import { DailyUpdateModel } from "@/database/mongodb/models/daily-update";
+import { LeaveRequestModel } from "@/database/mongodb/models/leave-request";
+import { ProjectModel } from "@/database/mongodb/models/project";
+import { SettingModel } from "@/database/mongodb/models/setting";
+import { TASK_LABELS, TaskModel } from "@/database/mongodb/models/task";
+import { UserModel } from "@/database/mongodb/models/user";
+
+export type SummaryCard = {
+  label: string;
+  value: string;
+  detail: string;
+};
+
+export type DashboardListItem = {
+  id: string;
+  title: string;
+  meta: string;
+  description: string;
+};
+
+export type DashboardNotificationItem = {
+  id: string;
+  title: string;
+  detail: string;
+  meta: string;
+  actionUrl: string;
+};
+
+export type CalendarEventItem = {
+  id: string;
+  title: string;
+  date: string;
+  type: string;
+  detail: string;
+};
+
+export type PerformanceScoreRow = {
+  id: string;
+  employeeName: string;
+  employeeEmail: string;
+  score: number;
+  attendanceRate: number;
+  taskCompletionRate: number;
+  dsrConsistencyRate: number;
+};
+
+export type DashboardBreakdownSlice = {
+  label: string;
+  value: number;
+  color: string;
+};
+
+export type AttendanceTrendPoint = {
+  label: string;
+  present: number;
+  onLeave: number;
+  absent: number;
+};
+
+export type LeaveTrendPoint = {
+  label: string;
+  count: number;
+};
+
+export type DsrTrendPoint = {
+  label: string;
+  submitted: number;
+  missing: number;
+};
+
+export type EmployeeProjectSummaryRow = {
+  id: string;
+  employeeName: string;
+  employeeEmail: string;
+  pendingProjects: number;
+  completedProjects: number;
+};
+
+export type DashboardOverviewData = {
+  title: string;
+  description: string;
+  cards: SummaryCard[];
+  notificationTitle?: string;
+  notifications?: DashboardNotificationItem[];
+  weeklySummaryTitle?: string;
+  weeklySummaryCards?: SummaryCard[];
+  calendarTitle?: string;
+  calendarItems?: CalendarEventItem[];
+  performanceTitle?: string;
+  performanceRows?: PerformanceScoreRow[];
+  directoryEmptyMessage?: string;
+  directoryItems?: DashboardListItem[];
+  directoryTitle?: string;
+  primaryListTitle: string;
+  primaryEmptyMessage: string;
+  primaryItems: DashboardListItem[];
+  secondaryListTitle: string;
+  secondaryEmptyMessage: string;
+  secondaryItems: DashboardListItem[];
+  attendanceBreakdown?: DashboardBreakdownSlice[];
+  attendanceTrend?: AttendanceTrendPoint[];
+  taskStatusBreakdown?: DashboardBreakdownSlice[];
+  projectStatusBreakdown?: DashboardBreakdownSlice[];
+  leaveTrend?: LeaveTrendPoint[];
+  dsrTrend?: DsrTrendPoint[];
+  employeeProjectRows?: EmployeeProjectSummaryRow[];
+  financeNote?: string;
+};
+
+export type EmployeeDirectoryEntry = {
+  id: string;
+  fullName: string;
+  email: string;
+  phone: string;
+  joiningDate: string;
+  managerId: string;
+  managerName: string;
+  role: "SUPER_ADMIN" | "MANAGER" | "EMPLOYEE" | "SALES";
+  status: "ACTIVE" | "SUSPENDED";
+  projectIds: string[];
+  documentName: string;
+  documentUrl: string;
+};
+
+export type EmployeeProjectEntry = {
+  id: string;
+  name: string;
+  summary: string;
+  status: string;
+  priority: string;
+  dueDate: string;
+  assignedUserIds: string[];
+};
+
+export type FileAttachmentView = {
+  name: string;
+  url: string;
+};
+
+export type DsrFeedEntry = {
+  id: string;
+  employeeName: string;
+  employeeEmail: string;
+  projectName: string;
+  workDate: string;
+  summary: string;
+  accomplishments: string;
+  blockers: string;
+  nextPlan: string;
+  attachments: FileAttachmentView[];
+};
+
+export type EmployeesPageData = {
+  managerOptions: EmployeeOption[];
+  summaryCards: SummaryCard[];
+  users: EmployeeDirectoryEntry[];
+  projects: EmployeeProjectEntry[];
+  recentUpdates: DsrFeedEntry[];
+};
+
+export type AttendanceRecordView = {
+  id: string;
+  employeeName: string;
+  employeeEmail: string;
+  dateKey: string;
+  checkInAt: string;
+  checkOutAt: string;
+  status: string;
+};
+
+export type AttendanceMonthlyRow = {
+  id: string;
+  employeeName: string;
+  daysMarked: number;
+  completedDays: number;
+};
+
+export type AttendancePageData = {
+  summaryCards: SummaryCard[];
+  todayRecord: AttendanceRecordView | null;
+  todayRecords: AttendanceRecordView[];
+  monthlyRows: AttendanceMonthlyRow[];
+};
+
+export type LeaveEntry = {
+  id: string;
+  employeeName: string;
+  employeeEmail: string;
+  leaveType: string;
+  startDate: string;
+  endDate: string;
+  reason: string;
+  status: string;
+};
+
+export type LeavePageData = {
+  summaryCards: SummaryCard[];
+  leaves: LeaveEntry[];
+};
+
+export type TaskCommentView = {
+  id: string;
+  userName: string;
+  role: string;
+  message: string;
+  createdAt: string;
+};
+
+export type TaskEntry = {
+  id: string;
+  title: string;
+  description: string;
+  assignedUserId: string;
+  assignedUserName: string;
+  assignedByName: string;
+  dueDate: string;
+  status: string;
+  priority: string;
+  labels: string[];
+  isOverdue: boolean;
+  attachments: FileAttachmentView[];
+  comments: TaskCommentView[];
+};
+
+export type EmployeeOption = {
+  id: string;
+  label: string;
+};
+
+export type TaskPageData = {
+  summaryCards: SummaryCard[];
+  tasks: TaskEntry[];
+  employeeOptions: EmployeeOption[];
+  labelOptions: string[];
+};
+
+export type EmployeeProjectView = {
+  id: string;
+  name: string;
+  summary: string;
+  status: string;
+  priority: string;
+  dueDate: string;
+};
+
+export type EmployeeUpdateView = {
+  id: string;
+  workDate: string;
+  summary: string;
+  accomplishments: string;
+  blockers: string;
+  nextPlan: string;
+  projectId: string;
+  projectName: string;
+  attachments: FileAttachmentView[];
+};
+
+export type DsrMissingEntry = {
+  id: string;
+  employeeName: string;
+  employeeEmail: string;
+};
+
+export type DsrPageData =
+  | {
+      mode: "employee";
+      summaryCards: SummaryCard[];
+      projects: EmployeeProjectView[];
+      updates: EmployeeUpdateView[];
+      reminderMessage: string;
+    }
+  | {
+      mode: "review";
+      summaryCards: SummaryCard[];
+      updates: DsrFeedEntry[];
+      missingEmployees: DsrMissingEntry[];
+      reminderMessage: string;
+    };
+
+export type ReportsPageData = {
+  summaryCards: SummaryCard[];
+  weeklySummaryCards: SummaryCard[];
+  calendarItems: CalendarEventItem[];
+  performanceRows: PerformanceScoreRow[];
+  attendanceRows: AttendanceMonthlyRow[];
+  leaveRows: LeaveEntry[];
+  taskRows: TaskEntry[];
+};
+
+export type SettingsPageData = {
+  companyName: string;
+  workStart: string;
+  workEnd: string;
+  leavePolicy: string;
+};
+
+export async function getDashboardOverviewData(session: AuthenticatedSession): Promise<DashboardOverviewData> {
+  await connectDb();
+  await syncWorkflowNotifications(session);
+
+  const today = getTodayDate();
+  const weekStart = addDaysToDate(today, -6);
+  const notifications = mapNotifications(await getNotificationsForUser(session.user.id, 8));
+
+  if (session.user.role === "SUPER_ADMIN" || session.user.role === "MANAGER") {
+    const activeEmployees = await UserModel.find({ role: "EMPLOYEE", status: "ACTIVE" }, { fullName: 1, email: 1, phone: 1, joiningDate: 1 })
+      .sort({ fullName: 1 })
+      .lean();
+    const employeeIds = activeEmployees.map((employee) => employee._id.toString());
+    const employeeMap = new Map(
+      activeEmployees.map((employee) => [employee._id.toString(), { fullName: employee.fullName, email: employee.email }]),
+    );
+    const scope = inScope(employeeIds);
+    const [todaysAttendance, leaveRows, taskRows, weekAttendance, weekUpdates, projects] = await Promise.all([
+      AttendanceModel.find({ userId: scope, dateKey: today }, { userId: 1 }).lean(),
+      LeaveRequestModel.find({ userId: scope }, { userId: 1, leaveType: 1, startDate: 1, endDate: 1, status: 1, reason: 1, createdAt: 1 }).sort({ createdAt: -1 }).lean(),
+      TaskModel.find({ assignedUserId: scope }, { title: 1, dueDate: 1, status: 1, assignedUserId: 1, priority: 1, completedAt: 1, createdAt: 1 }).sort({ createdAt: -1 }).lean(),
+      AttendanceModel.find({ userId: scope, dateKey: { $gte: weekStart, $lte: today } }, { userId: 1, status: 1, dateKey: 1 }).lean(),
+      DailyUpdateModel.find({ userId: scope, workDate: { $gte: weekStart, $lte: today } }, { userId: 1, workDate: 1 }).lean(),
+      ProjectModel.find({}, { name: 1, status: 1, assignedUserIds: 1 }).sort({ createdAt: -1 }).lean(),
+    ]);
+    const presentTodayIds = new Set(todaysAttendance.map((row) => row.userId));
+    const onLeaveTodayIds = new Set(
+      leaveRows
+        .filter((leave) => leave.status === "APPROVED" && leave.startDate <= today && leave.endDate >= today)
+        .map((leave) => leave.userId),
+    );
+    const presentToday = presentTodayIds.size;
+    const onLeaveToday = Array.from(onLeaveTodayIds).filter((userId) => !presentTodayIds.has(userId)).length;
+    const absentToday = Math.max(activeEmployees.length - presentToday - onLeaveToday, 0);
+    const todayLeaveRows = leaveRows.filter((leave) => leave.status === "APPROVED" && leave.startDate <= today && leave.endDate >= today);
+    const currentWindowLeaveRows = leaveRows.filter((leave) => leave.endDate >= weekStart && leave.startDate <= today);
+    const currentWindowTaskRows = taskRows.filter((task) => !task.createdAt || formatDate(task.createdAt) >= weekStart);
+    const pendingProjects = projects.filter((project) => project.status === "PLANNING" || project.status === "ON_HOLD").length;
+    const inProgressProjects = projects.filter((project) => project.status === "IN_PROGRESS").length;
+    const completedProjects = projects.filter((project) => project.status === "COMPLETED").length;
+    const attendanceBreakdown: DashboardBreakdownSlice[] = [
+      { label: "Present", value: presentToday, color: "#2563eb" },
+      { label: "On Leave", value: onLeaveToday, color: "#f59e0b" },
+      { label: "Absent", value: absentToday, color: "#ef4444" },
+    ];
+    const taskStatusBreakdown: DashboardBreakdownSlice[] = [
+      { label: "Pending", value: taskRows.filter((task) => task.status === "PENDING").length, color: "#f59e0b" },
+      { label: "In Progress", value: taskRows.filter((task) => task.status === "IN_PROGRESS").length, color: "#3b82f6" },
+      { label: "Completed", value: taskRows.filter((task) => task.status === "COMPLETED").length, color: "#10b981" },
+    ];
+    const projectStatusBreakdown: DashboardBreakdownSlice[] = [
+      { label: "Pending", value: pendingProjects, color: "#f97316" },
+      { label: "In Progress", value: inProgressProjects, color: "#2563eb" },
+      { label: "Completed", value: completedProjects, color: "#10b981" },
+    ];
+    const attendanceTrend = buildAttendanceTrend({ activeEmployeeIds: employeeIds, attendanceRows: weekAttendance, leaveRows, today, weekStart });
+    const leaveTrend = buildLeaveTrend(leaveRows, today, 6);
+    const dsrTrend = buildDsrTrend({ activeEmployeeIds: employeeIds, dsrRows: weekUpdates, today, weekStart });
+    const employeeProjectRows = buildEmployeeProjectSummaryRows({
+      activeEmployees,
+      projects: projects.map((project) => ({
+        assignedUserIds: project.assignedUserIds ?? [],
+        status: project.status,
+      })),
+    });
+
+    return {
+      title: session.user.role === "SUPER_ADMIN" ? "Admin Dashboard" : "Manager Dashboard",
+      description:
+        session.user.role === "SUPER_ADMIN"
+          ? "Operations overview for attendance, task movement, leave approvals, and daily reporting discipline."
+          : "Manager control center for company-wide attendance, task movement, leave approvals, and daily reporting discipline.",
+      cards: [
+        { label: "Present Today", value: String(presentToday), detail: "Employees who marked attendance today." },
+        { label: "On Leave Today", value: String(onLeaveToday), detail: "Approved leave records active for today." },
+        { label: "Projects Pending", value: String(pendingProjects), detail: "Projects in planning or hold state." },
+        { label: "Projects In Progress", value: String(inProgressProjects), detail: "Projects currently under execution." },
+        { label: "Projects Completed", value: String(completedProjects), detail: "Projects already closed successfully." },
+        { label: "DSR Missing", value: String(dsrTrend.at(-1)?.missing ?? 0), detail: "Employees still missing today's DSR." },
+      ],
+      notificationTitle: "System Notifications",
+      notifications,
+      weeklySummaryTitle: "Weekly Summary",
+      weeklySummaryCards: buildWeeklySummaryCards({
+        attendanceRows: weekAttendance,
+        dsrRows: weekUpdates,
+        leaveRows: currentWindowLeaveRows,
+        taskRows: currentWindowTaskRows,
+        activePeopleCount: activeEmployees.length,
+      }),
+      calendarTitle: "Upcoming Calendar",
+      calendarItems: buildCalendarItems({ leaves: leaveRows, tasks: taskRows, userMap: employeeMap }),
+      performanceTitle: "Performance Score",
+      performanceRows: (await buildPerformanceRows(employeeIds)).slice(0, 5),
+      directoryTitle: "Employee Directory",
+      directoryEmptyMessage: "No active employees available right now.",
+      directoryItems: activeEmployees.map((employee) => ({
+        id: employee._id.toString(),
+        title: employee.fullName,
+        meta: employee.joiningDate ? `Joined ${formatDate(employee.joiningDate)}` : "Joining date not added",
+        description: [employee.email, employee.phone || "Phone not added"].join(" | "),
+      })),
+      primaryListTitle: "Today On Leave",
+      primaryEmptyMessage: "No employees are on leave today.",
+      primaryItems: todayLeaveRows.map((row) => ({
+        id: row._id.toString(),
+        title: employeeMap.get(row.userId)?.fullName ?? "Unknown employee",
+        meta: `${formatLabel(row.leaveType)} | ${formatLabel(row.status)}`,
+        description: row.reason?.trim() ? row.reason : `${row.startDate} to ${row.endDate}`,
+      })),
+      secondaryListTitle: "Employee Delivery Snapshot",
+      secondaryEmptyMessage: "No employee project records are available yet.",
+      secondaryItems: employeeProjectRows.slice(0, 5).map((row) => ({
+        id: row.id,
+        title: row.employeeName,
+        meta: `Pending ${row.pendingProjects} | Completed ${row.completedProjects}`,
+        description: row.employeeEmail,
+      })),
+      attendanceBreakdown,
+      attendanceTrend,
+      taskStatusBreakdown,
+      projectStatusBreakdown,
+      leaveTrend,
+      dsrTrend,
+      employeeProjectRows: employeeProjectRows.slice(0, 8),
+    };
+  }
+
+  if (false) {
+    const teamUserIds = await getVisibleUserIdsForSession(session, { employeesOnly: true });
+    const scope = inScope(teamUserIds);
+    const [teamCount, todaysAttendance, pendingLeaves, pendingTasks, taskRows, dsrRows, weekAttendance] = await Promise.all([
+      UserModel.countDocuments({ _id: scope, role: "EMPLOYEE", status: "ACTIVE" }),
+      AttendanceModel.find({ userId: scope, dateKey: today }, { userId: 1 }).lean(),
+      LeaveRequestModel.countDocuments({ userId: scope, status: "PENDING" }),
+      TaskModel.countDocuments({ assignedByUserId: session.user.id, status: { $ne: "COMPLETED" } }),
+      TaskModel.find({ assignedByUserId: session.user.id }, { title: 1, dueDate: 1, status: 1, assignedUserId: 1, priority: 1 }).sort({ createdAt: -1 }).limit(5).lean(),
+      DailyUpdateModel.find({ userId: scope }, { userId: 1, summary: 1, workDate: 1 }).sort({ createdAt: -1 }).limit(5).lean(),
+      AttendanceModel.find({ userId: scope, dateKey: { $gte: weekStart, $lte: today } }, { userId: 1, status: 1 }).lean(),
+    ]);
+    const presentToday = new Set(todaysAttendance.map((row) => row.userId)).size;
+    const userMap = await buildUserMap([...taskRows.map((row) => row.assignedUserId), ...dsrRows.map((row) => row.userId)]);
+
+    return {
+      title: "Manager Dashboard",
+      description: "Team operations view for attendance, task ownership, leave approvals, and daily reporting.",
+      cards: [
+        { label: "Team Members", value: String(teamCount), detail: "Employees currently in your visible team scope." },
+        { label: "Present Today", value: String(presentToday), detail: "Team attendance marked for today." },
+        { label: "Absent Today", value: String(Math.max(teamCount - presentToday, 0)), detail: "Team members missing attendance today." },
+        { label: "Pending Leaves", value: String(pendingLeaves), detail: "Pending leave requests from your visible team." },
+        { label: "Open Tasks", value: String(pendingTasks), detail: "Tasks assigned by you that are still active." },
+      ],
+      notificationTitle: "System Notifications",
+      notifications,
+      weeklySummaryTitle: "Weekly Summary",
+      weeklySummaryCards: buildWeeklySummaryCards({
+        attendanceRows: weekAttendance,
+        dsrRows,
+        leaveRows: [],
+        taskRows,
+        activePeopleCount: teamCount,
+      }),
+      calendarTitle: "Upcoming Calendar",
+      calendarItems: buildCalendarItems({ leaves: [], tasks: taskRows, userMap }),
+      performanceTitle: "Performance Score",
+      performanceRows: (await buildPerformanceRows(teamUserIds)).slice(0, 5),
+      primaryListTitle: "Recent Team Tasks",
+      primaryEmptyMessage: "No team tasks available yet.",
+      primaryItems: taskRows.map((row) => ({
+        id: row._id.toString(),
+        title: row.title,
+        meta: `${userMap.get(row.assignedUserId)?.fullName ?? "Unknown employee"} • ${formatLabel(row.priority ?? "MEDIUM")}`,
+        description: `Due ${row.dueDate} • ${formatLabel(row.status)}`,
+      })),
+      secondaryListTitle: "Recent Team DSR",
+      secondaryEmptyMessage: "No DSR entries from your team yet.",
+      secondaryItems: dsrRows.map((row) => ({
+        id: row._id.toString(),
+        title: row.summary,
+        meta: userMap.get(row.userId)?.fullName ?? "Unknown employee",
+        description: row.workDate,
+      })),
+    };
+  }
+
+  const [attendanceRow, pendingLeaves, openTasks, projectCount, dsrCount, taskRows] = await Promise.all([
+    AttendanceModel.findOne({ userId: session.user.id, dateKey: today }).lean(),
+    LeaveRequestModel.countDocuments({ userId: session.user.id, status: "PENDING" }),
+    TaskModel.countDocuments({ assignedUserId: session.user.id, status: { $ne: "COMPLETED" } }),
+    ProjectModel.countDocuments({ assignedUserIds: session.user.id }),
+    DailyUpdateModel.countDocuments({ userId: session.user.id, workDate: today }),
+    TaskModel.find({ assignedUserId: session.user.id }, { title: 1, dueDate: 1, status: 1, priority: 1 }).sort({ createdAt: -1 }).limit(5).lean(),
+  ]);
+
+  return {
+    title: "Employee Dashboard",
+    description: "Personal workflow view for attendance, assigned tasks, DSR discipline, and upcoming work.",
+    cards: [
+      { label: "Attendance", value: attendanceRow ? formatLabel(attendanceRow.status) : "Not Marked", detail: "Your current attendance status for today." },
+      { label: "Pending Leaves", value: String(pendingLeaves), detail: "Your leave requests waiting for review." },
+      { label: "Open Tasks", value: String(openTasks), detail: "Assigned tasks still in progress." },
+      { label: "Assigned Projects", value: String(projectCount), detail: "Projects currently linked to your account." },
+      { label: "DSR Today", value: dsrCount ? "Submitted" : "Pending", detail: "Daily status report state for today." },
+    ],
+    notificationTitle: "System Notifications",
+    notifications,
+    weeklySummaryTitle: "Weekly Summary",
+    weeklySummaryCards: buildWeeklySummaryCards({
+      attendanceRows: attendanceRow ? [attendanceRow] : [],
+      dsrRows: dsrCount ? [{ userId: session.user.id, workDate: today }] : [],
+      leaveRows: [],
+      taskRows,
+      activePeopleCount: 1,
+    }),
+    calendarTitle: "Upcoming Calendar",
+    calendarItems: buildCalendarItems({
+      leaves: [],
+      tasks: taskRows.map((task) => ({ ...task, assignedUserId: session.user.id })),
+      userMap: new Map([[session.user.id, { fullName: session.user.fullName, email: session.user.email }]]),
+    }),
+    performanceTitle: "Performance Score",
+    performanceRows: await buildPerformanceRows([session.user.id]),
+    primaryListTitle: "My Tasks",
+    primaryEmptyMessage: "No tasks assigned right now.",
+    primaryItems: taskRows.map((row) => ({
+      id: row._id.toString(),
+      title: row.title,
+      meta: `${formatLabel(row.status)} • ${formatLabel(row.priority ?? "MEDIUM")}`,
+      description: `Due ${row.dueDate}`,
+    })),
+    secondaryListTitle: "My Work Focus",
+    secondaryEmptyMessage: "Your next work updates will appear here.",
+    secondaryItems: [
+      { id: "attendance", title: "Mark Attendance", meta: "Daily", description: "Use the Attendance page to check in and check out." },
+      { id: "dsr", title: "Submit DSR", meta: "Daily", description: "Use the DSR page to report today’s work and tomorrow’s plan." },
+      { id: "leave", title: "Apply Leave", meta: "As needed", description: "Use the Leaves page for sick or paid leave requests." },
+    ],
+  };
+}
+
+export async function getEmployeesPageData(session?: AuthenticatedSession): Promise<EmployeesPageData> {
+  await connectDb();
+
+  const hasAdminLikeAccess = session?.user.role === "SUPER_ADMIN" || session?.user.role === "MANAGER";
+  const userFilter = hasAdminLikeAccess ? { role: { $ne: "SUPER_ADMIN" } } : { _id: { $in: [] } };
+
+  const users = await UserModel.find(
+    userFilter,
+    { fullName: 1, email: 1, phone: 1, joiningDate: 1, managerId: 1, role: 1, status: 1, projectIds: 1, documentName: 1, documentUrl: 1 },
+  ).sort({ createdAt: -1 }).lean();
+
+  const updatesFilter = hasAdminLikeAccess ? {} : { userId: { $in: [] } };
+
+  const [projects, updates, managerUsers, userMap, managerMap] = await Promise.all([
+    ProjectModel.find(hasAdminLikeAccess ? {} : { _id: { $in: [] } }, { name: 1, summary: 1, status: 1, priority: 1, dueDate: 1, assignedUserIds: 1 }).sort({ createdAt: -1 }).lean(),
+    DailyUpdateModel.find(updatesFilter, { userId: 1, projectId: 1, workDate: 1, summary: 1, accomplishments: 1, blockers: 1, nextPlan: 1, attachments: 1 }).sort({ createdAt: -1 }).limit(8).lean(),
+    UserModel.find({ role: "MANAGER", status: "ACTIVE" }, { fullName: 1, email: 1 }).sort({ fullName: 1 }).lean(),
+    buildUserMap(users.map((user) => user._id.toString())),
+    buildUserMap(users.map((user) => user.managerId).filter(Boolean)),
+  ]);
+
+  const projectMap = await buildProjectMap(projects.map((project) => project._id.toString()));
+  const activeUsers = users.filter((user) => user.status === "ACTIVE");
+  const managerCount = users.filter((user) => user.role === "MANAGER").length;
+  const employeeCount = users.filter((user) => user.role === "EMPLOYEE").length;
+
+  return {
+    managerOptions: managerUsers.map((manager) => ({
+      id: manager._id.toString(),
+      label: `${manager.fullName} (${manager.email})`,
+    })),
+    summaryCards: [
+      { label: "Total Team", value: String(activeUsers.length), detail: "Active manager and employee accounts available in the company." },
+      { label: "Managers", value: String(managerCount), detail: "Manager accounts currently active." },
+      { label: "Employees", value: String(employeeCount), detail: "Employee accounts available for task and project assignment." },
+      { label: "Projects", value: String(projects.length), detail: "Projects available for employee assignment and DSR mapping." },
+    ],
+    users: users.map((user) => ({
+      id: user._id.toString(),
+      fullName: user.fullName,
+      email: user.email,
+      phone: user.phone ?? "",
+      joiningDate: formatDate(user.joiningDate),
+      managerId: user.managerId ?? "",
+      managerName: user.managerId ? managerMap.get(user.managerId)?.fullName ?? "Unknown manager" : "",
+      role: user.role,
+      status: user.status ?? "ACTIVE",
+      projectIds: user.projectIds ?? [],
+      documentName: user.documentName ?? "",
+      documentUrl: user.documentUrl ?? "",
+    })),
+    projects: projects.map((project) => ({
+      id: project._id.toString(),
+      name: project.name,
+      summary: project.summary,
+      status: project.status,
+      priority: project.priority,
+      dueDate: formatDate(project.dueDate),
+      assignedUserIds: project.assignedUserIds ?? [],
+    })),
+    recentUpdates: updates.map((update) => ({
+      id: update._id.toString(),
+      employeeName: userMap.get(update.userId)?.fullName ?? "Unknown employee",
+      employeeEmail: userMap.get(update.userId)?.email ?? "",
+      projectName: update.projectId ? projectMap.get(update.projectId) ?? "General" : "General",
+      workDate: update.workDate,
+      summary: update.summary,
+      accomplishments: update.accomplishments,
+      blockers: update.blockers ?? "",
+      nextPlan: update.nextPlan ?? "",
+      attachments: mapAttachments(update.attachments),
+    })),
+  };
+}
+
+export async function getAttendancePageData(session: AuthenticatedSession): Promise<AttendancePageData> {
+  await connectDb();
+
+  const today = getTodayDate();
+  const monthPrefix = today.slice(0, 7);
+  const scopeIds =
+    session.user.role === "SUPER_ADMIN" || session.user.role === "MANAGER"
+      ? await getAllActiveEmployeeIds()
+      : await getVisibleUserIdsForSession(session, { employeesOnly: true });
+  const attendanceIds = session.user.role === "EMPLOYEE" ? [session.user.id] : scopeIds;
+  const attendanceScope = inScope(attendanceIds);
+
+  const [todayRecord, todayRecords, monthlyRecords, users] = await Promise.all([
+    AttendanceModel.findOne({ userId: session.user.id, dateKey: today }).lean(),
+    AttendanceModel.find({ userId: attendanceScope, dateKey: today }).sort({ checkInAt: 1 }).lean(),
+    AttendanceModel.find({ userId: attendanceScope, dateKey: { $regex: `^${monthPrefix}` } }).lean(),
+    UserModel.find({ _id: attendanceScope }, { fullName: 1, email: 1, role: 1, status: 1 }).lean(),
+  ]);
+
+  const activeUsers = users.filter((user) => user.status === "ACTIVE");
+  const userMap = new Map(users.map((user) => [user._id.toString(), user]));
+  const presentCount = new Set(todayRecords.map((record) => record.userId)).size;
+  const completedCount = todayRecords.filter((row) => row.status === "COMPLETED").length;
+  const missingCount = Math.max(activeUsers.length - presentCount, 0);
+  const monthlyMap = new Map<string, AttendanceMonthlyRow>();
+
+  for (const record of monthlyRecords) {
+    const entry = monthlyMap.get(record.userId) ?? {
+      id: record.userId,
+      employeeName: userMap.get(record.userId)?.fullName ?? "Unknown employee",
+      daysMarked: 0,
+      completedDays: 0,
+    };
+    entry.daysMarked += 1;
+    if (record.status === "COMPLETED") {
+      entry.completedDays += 1;
+    }
+    monthlyMap.set(record.userId, entry);
+  }
+
+  return {
+    summaryCards: [
+      { label: "Present Today", value: String(presentCount), detail: "Attendance entries marked for today." },
+      { label: "Checked Out", value: String(completedCount), detail: "People who have completed checkout." },
+      { label: "Not Marked", value: String(missingCount), detail: "Visible team members with no attendance yet." },
+      { label: "My Status", value: todayRecord ? formatLabel(todayRecord.status) : "Not Marked", detail: "Your current attendance state for today." },
+    ],
+    todayRecord: todayRecord
+      ? {
+          id: todayRecord._id.toString(),
+          employeeName: session.user.fullName,
+          employeeEmail: session.user.email,
+          dateKey: todayRecord.dateKey,
+          checkInAt: formatDateTime(todayRecord.checkInAt),
+          checkOutAt: formatDateTime(todayRecord.checkOutAt),
+          status: todayRecord.status,
+        }
+      : null,
+    todayRecords: todayRecords.map((record) => ({
+      id: record._id.toString(),
+      employeeName: userMap.get(record.userId)?.fullName ?? "Unknown employee",
+      employeeEmail: userMap.get(record.userId)?.email ?? "",
+      dateKey: record.dateKey,
+      checkInAt: formatDateTime(record.checkInAt),
+      checkOutAt: formatDateTime(record.checkOutAt),
+      status: record.status,
+    })),
+    monthlyRows: Array.from(monthlyMap.values()).sort((left, right) => left.employeeName.localeCompare(right.employeeName)),
+  };
+}
+
+export async function getLeavesPageData(session: AuthenticatedSession): Promise<LeavePageData> {
+  await connectDb();
+
+  const visibleUserIds = await getVisibleUserIdsForSession(session, { employeesOnly: true });
+  const leaveFilter =
+    session.user.role === "SUPER_ADMIN" || session.user.role === "MANAGER"
+      ? {}
+      : { userId: inScope(session.user.role === "EMPLOYEE" ? [session.user.id] : visibleUserIds) };
+
+  const [leaves, users] = await Promise.all([
+    LeaveRequestModel.find(leaveFilter).sort({ createdAt: -1 }).lean(),
+    UserModel.find({}, { fullName: 1, email: 1 }).lean(),
+  ]);
+
+  const userMap = new Map(users.map((user) => [user._id.toString(), user]));
+
+  return {
+    summaryCards: [
+      { label: "Pending", value: String(leaves.filter((item) => item.status === "PENDING").length), detail: "Leave requests awaiting review." },
+      { label: "Approved", value: String(leaves.filter((item) => item.status === "APPROVED").length), detail: "Approved leave requests." },
+      { label: "Rejected", value: String(leaves.filter((item) => item.status === "REJECTED").length), detail: "Rejected leave requests." },
+      { label: "History", value: String(leaves.length), detail: "Total leave requests in your current scope." },
+    ],
+    leaves: leaves.map((leave) => ({
+      id: leave._id.toString(),
+      employeeName: userMap.get(leave.userId)?.fullName ?? "Unknown employee",
+      employeeEmail: userMap.get(leave.userId)?.email ?? "",
+      leaveType: leave.leaveType,
+      startDate: leave.startDate,
+      endDate: leave.endDate,
+      reason: leave.reason,
+      status: leave.status,
+    })),
+  };
+}
+
+export async function getTasksPageData(session: AuthenticatedSession): Promise<TaskPageData> {
+  await connectDb();
+
+  const hasAdminLikeAccess = session.user.role === "SUPER_ADMIN" || session.user.role === "MANAGER";
+  const taskFilter =
+    hasAdminLikeAccess
+      ? {}
+      : { $or: [{ assignedUserId: session.user.id }, { assignedByUserId: session.user.id }] };
+  const employeeFilter = { role: "EMPLOYEE", status: "ACTIVE" };
+
+  const [tasks, employees, users] = await Promise.all([
+    TaskModel.find(taskFilter).sort({ createdAt: -1 }).lean(),
+    UserModel.find(employeeFilter, { fullName: 1, email: 1 }).sort({ fullName: 1 }).lean(),
+    UserModel.find({}, { fullName: 1 }).lean(),
+  ]);
+
+  const userMap = new Map(users.map((user) => [user._id.toString(), user.fullName]));
+  const overdueCount = tasks.filter((task) => task.status !== "COMPLETED" && task.dueDate < getTodayDate()).length;
+  const highPriorityCount = tasks.filter((task) => task.priority === "HIGH").length;
+
+  return {
+    summaryCards: [
+      { label: "Pending", value: String(tasks.filter((task) => task.status === "PENDING").length), detail: "Tasks waiting to start." },
+      { label: "In Progress", value: String(tasks.filter((task) => task.status === "IN_PROGRESS").length), detail: "Tasks currently being worked on." },
+      { label: "Overdue", value: String(overdueCount), detail: "Tasks that crossed their due date." },
+      { label: "High Priority", value: String(highPriorityCount), detail: "Important tasks requiring closer follow-up." },
+    ],
+    tasks: tasks.map((task) => mapTaskRow(task, userMap)),
+    employeeOptions: employees.map((employee) => ({
+      id: employee._id.toString(),
+      label: `${employee.fullName} (${employee.email})`,
+    })),
+    labelOptions: [...TASK_LABELS],
+  };
+}
+
+export async function getDsrPageData(session: AuthenticatedSession): Promise<DsrPageData> {
+  await connectDb();
+
+  const today = getTodayDate();
+  const currentTime = getCurrentTimeKey();
+
+  if (session.user.role === "EMPLOYEE") {
+    const [projects, updates] = await Promise.all([
+      ProjectModel.find({ _id: { $in: session.user.projectIds } }, { name: 1, summary: 1, status: 1, priority: 1, dueDate: 1 }).sort({ createdAt: -1 }).lean(),
+      DailyUpdateModel.find({ userId: session.user.id }).sort({ createdAt: -1 }).limit(10).lean(),
+    ]);
+    const projectMap = new Map(projects.map((project) => [project._id.toString(), project.name]));
+    const hasTodayDsr = updates.some((update) => update.workDate === today);
+
+    return {
+      mode: "employee",
+      summaryCards: [
+        { label: "Assigned Projects", value: String(projects.length), detail: "Projects currently assigned to you." },
+        { label: "DSR Today", value: hasTodayDsr ? "Submitted" : "Pending", detail: "Your DSR status for today." },
+        { label: "Total DSR", value: String(updates.length), detail: "Your recorded daily work reports." },
+      ],
+      projects: projects.map((project) => ({
+        id: project._id.toString(),
+        name: project.name,
+        summary: project.summary,
+        status: project.status,
+        priority: project.priority,
+        dueDate: formatDate(project.dueDate),
+      })),
+      updates: updates.map((update) => ({
+        id: update._id.toString(),
+        workDate: update.workDate,
+        summary: update.summary,
+        accomplishments: update.accomplishments,
+        blockers: update.blockers ?? "",
+        nextPlan: update.nextPlan ?? "",
+        projectId: update.projectId ?? "",
+        projectName: update.projectId ? projectMap.get(update.projectId) ?? "General" : "General",
+        attachments: mapAttachments(update.attachments),
+      })),
+      reminderMessage:
+        !hasTodayDsr && currentTime >= "19:00"
+          ? "It is after 7 PM and your DSR is still pending. Submit it today to keep reporting discipline clean."
+          : "Submit your DSR before day close so your manager and admin can review progress without follow-up.",
+    };
+  }
+
+  const visibleEmployeeIds =
+    session.user.role === "SUPER_ADMIN" || session.user.role === "MANAGER"
+      ? await getAllActiveEmployeeIds()
+      : await getVisibleUserIdsForSession(session, { employeesOnly: true });
+  const scope = inScope(visibleEmployeeIds);
+  const [updates, users, projects] = await Promise.all([
+    DailyUpdateModel.find({ userId: scope }).sort({ createdAt: -1 }).limit(15).lean(),
+    UserModel.find({ _id: scope }, { fullName: 1, email: 1, status: 1 }).lean(),
+    ProjectModel.find({}, { name: 1 }).lean(),
+  ]);
+
+  const userMap = new Map(users.map((user) => [user._id.toString(), user]));
+  const projectMap = new Map(projects.map((project) => [project._id.toString(), project.name]));
+  const submittedTodayIds = new Set(updates.filter((update) => update.workDate === today).map((update) => update.userId));
+  const missingEmployees = users
+    .filter((user) => user.status === "ACTIVE" && !submittedTodayIds.has(user._id.toString()))
+    .map((user) => ({
+      id: user._id.toString(),
+      employeeName: user.fullName,
+      employeeEmail: user.email,
+    }));
+
+  return {
+    mode: "review",
+    summaryCards: [
+      { label: "Submitted Today", value: String(submittedTodayIds.size), detail: "Employees who submitted DSR today." },
+      { label: "Missing Today", value: String(missingEmployees.length), detail: "Employees still missing a DSR entry today." },
+      { label: "Recent Entries", value: String(updates.length), detail: "Latest DSR rows visible in this review scope." },
+    ],
+    updates: updates.map((update) => ({
+      id: update._id.toString(),
+      employeeName: userMap.get(update.userId)?.fullName ?? "Unknown employee",
+      employeeEmail: userMap.get(update.userId)?.email ?? "",
+      projectName: update.projectId ? projectMap.get(update.projectId) ?? "General" : "General",
+      workDate: update.workDate,
+      summary: update.summary,
+      accomplishments: update.accomplishments,
+      blockers: update.blockers ?? "",
+      nextPlan: update.nextPlan ?? "",
+      attachments: mapAttachments(update.attachments),
+    })),
+    missingEmployees,
+    reminderMessage:
+      currentTime >= "19:00"
+        ? `${missingEmployees.length} employee(s) are still pending DSR after 7 PM.`
+        : "Use this feed to monitor missing DSR before day close.",
+  };
+}
+
+export async function getReportsPageData(session: AuthenticatedSession): Promise<ReportsPageData> {
+  await connectDb();
+
+  const today = getTodayDate();
+  const weekStart = addDaysToDate(today, -6);
+  const visibleEmployeeIds = await getVisibleUserIdsForSession(session, { employeesOnly: true });
+  const scopedIds =
+    session.user.role === "SUPER_ADMIN" || session.user.role === "MANAGER"
+      ? await getAllActiveEmployeeIds()
+      : session.user.role === "EMPLOYEE"
+        ? [session.user.id]
+        : visibleEmployeeIds;
+  const scope = inScope(scopedIds);
+
+  const [users, attendance, leaves, tasks, dsrRows] = await Promise.all([
+    UserModel.find({ _id: scope }, { fullName: 1, email: 1 }).lean(),
+    AttendanceModel.find({ userId: scope }).lean(),
+    LeaveRequestModel.find({ userId: scope }).sort({ createdAt: -1 }).limit(20).lean(),
+    TaskModel.find({ assignedUserId: scope }).sort({ createdAt: -1 }).limit(20).lean(),
+    DailyUpdateModel.find({ userId: scope, workDate: { $gte: weekStart, $lte: today } }, { userId: 1, workDate: 1 }).lean(),
+  ]);
+
+  const userMap = new Map(users.map((user) => [user._id.toString(), user]));
+  const attendanceRows = new Map<string, AttendanceMonthlyRow>();
+
+  for (const row of attendance) {
+    const item = attendanceRows.get(row.userId) ?? {
+      id: row.userId,
+      employeeName: userMap.get(row.userId)?.fullName ?? "Unknown employee",
+      daysMarked: 0,
+      completedDays: 0,
+    };
+    item.daysMarked += 1;
+    if (row.status === "COMPLETED") {
+      item.completedDays += 1;
+    }
+    attendanceRows.set(row.userId, item);
+  }
+
+  return {
+    summaryCards: [
+      { label: "Attendance Report", value: String(attendanceRows.size), detail: "Employees with attendance records in the current scope." },
+      { label: "Leave Report", value: String(leaves.length), detail: "Leave records included in this report view." },
+      { label: "Task Report", value: String(tasks.length), detail: "Task rows included in this report view." },
+    ],
+    weeklySummaryCards: buildWeeklySummaryCards({
+      attendanceRows: attendance.filter((row) => row.dateKey >= weekStart),
+      dsrRows,
+      leaveRows: leaves.filter((leave) => leave.startDate >= weekStart || leave.endDate >= weekStart),
+      taskRows: tasks,
+      activePeopleCount: users.length,
+    }),
+    calendarItems: buildCalendarItems({ leaves, tasks, userMap }).slice(0, 10),
+    performanceRows: await buildPerformanceRows(scopedIds),
+    attendanceRows: Array.from(attendanceRows.values()).sort((left, right) => left.employeeName.localeCompare(right.employeeName)),
+    leaveRows: leaves.map((leave) => ({
+      id: leave._id.toString(),
+      employeeName: userMap.get(leave.userId)?.fullName ?? "Unknown employee",
+      employeeEmail: userMap.get(leave.userId)?.email ?? "",
+      leaveType: leave.leaveType,
+      startDate: leave.startDate,
+      endDate: leave.endDate,
+      reason: leave.reason,
+      status: leave.status,
+    })),
+    taskRows: tasks.map((task) => mapTaskRow(task, new Map(users.map((user) => [user._id.toString(), user.fullName])))),
+  };
+}
+
+export async function getSettingsPageData(): Promise<SettingsPageData> {
+  await connectDb();
+
+  const settings = await SettingModel.findOne({ key: "company" }).lean();
+
+  return {
+    companyName: settings?.companyName ?? "Mindaptix CRM",
+    workStart: settings?.workStart ?? "09:00",
+    workEnd: settings?.workEnd ?? "18:00",
+    leavePolicy: settings?.leavePolicy ?? "Paid Leave and Sick Leave are available for approved requests.",
+  };
+}
+
+async function buildUserMap(userIds: string[]) {
+  const uniqueIds = Array.from(new Set(userIds.filter(Boolean)));
+
+  if (uniqueIds.length === 0) {
+    return new Map<string, { fullName: string; email: string }>();
+  }
+
+  const users = await UserModel.find({ _id: { $in: uniqueIds } }, { fullName: 1, email: 1 }).lean();
+  return new Map(users.map((user) => [user._id.toString(), { fullName: user.fullName, email: user.email }]));
+}
+
+async function buildProjectMap(projectIds: string[]) {
+  const uniqueIds = Array.from(new Set(projectIds.filter(Boolean)));
+
+  if (uniqueIds.length === 0) {
+    return new Map<string, string>();
+  }
+
+  const projects = await ProjectModel.find({ _id: { $in: uniqueIds } }, { name: 1 }).lean();
+  return new Map(projects.map((project) => [project._id.toString(), project.name]));
+}
+
+async function buildPerformanceRows(userIds: string[]): Promise<PerformanceScoreRow[]> {
+  const uniqueIds = Array.from(new Set(userIds.filter(Boolean)));
+
+  if (uniqueIds.length === 0) {
+    return [];
+  }
+
+  const today = getTodayDate();
+  const weekStart = addDaysToDate(today, -6);
+  const scope = inScope(uniqueIds);
+  const [users, attendance, tasks, updates] = await Promise.all([
+    UserModel.find({ _id: scope }, { fullName: 1, email: 1 }).lean(),
+    AttendanceModel.find({ userId: scope, dateKey: { $gte: weekStart, $lte: today } }, { userId: 1, status: 1 }).lean(),
+    TaskModel.find({ assignedUserId: scope }, { assignedUserId: 1, status: 1 }).lean(),
+    DailyUpdateModel.find({ userId: scope, workDate: { $gte: weekStart, $lte: today } }, { userId: 1 }).lean(),
+  ]);
+
+  return users
+    .map((user) => {
+      const userId = user._id.toString();
+      const attendanceRows = attendance.filter((row) => row.userId === userId);
+      const userTasks = tasks.filter((task) => task.assignedUserId === userId);
+      const dsrCount = updates.filter((update) => update.userId === userId).length;
+      const attendanceRate = getRate(attendanceRows.length, 7);
+      const taskCompletionRate = getRate(userTasks.filter((task) => task.status === "COMPLETED").length, Math.max(userTasks.length, 1));
+      const dsrConsistencyRate = getRate(dsrCount, 7);
+      const score = Math.round(attendanceRate * 0.35 + taskCompletionRate * 0.4 + dsrConsistencyRate * 0.25);
+
+      return {
+        id: userId,
+        employeeName: user.fullName,
+        employeeEmail: user.email,
+        score,
+        attendanceRate,
+        taskCompletionRate,
+        dsrConsistencyRate,
+      };
+    })
+    .sort((left, right) => right.score - left.score || left.employeeName.localeCompare(right.employeeName));
+}
+
+function buildWeeklySummaryCards({
+  attendanceRows,
+  dsrRows,
+  leaveRows,
+  taskRows,
+  activePeopleCount,
+}: {
+  attendanceRows: Array<{ status?: string }>;
+  dsrRows: Array<{ userId?: string; workDate?: string }>;
+  leaveRows: Array<{ status?: string }>;
+  taskRows: Array<{ status?: string }>;
+  activePeopleCount: number;
+}) {
+  const completedAttendance = attendanceRows.filter((row) => row.status === "COMPLETED").length;
+  const completedTasks = taskRows.filter((task) => task.status === "COMPLETED").length;
+  const pendingTasks = taskRows.filter((task) => task.status !== "COMPLETED").length;
+  const approvedLeaves = leaveRows.filter((leave) => leave.status === "APPROVED").length;
+
+  return [
+    { label: "Attendance", value: `${completedAttendance}/${Math.max(activePeopleCount * 7, 1)}`, detail: "Completed attendance checkouts recorded this week." },
+    { label: "DSR", value: String(dsrRows.length), detail: "DSR entries submitted in the last 7 days." },
+    { label: "Completed Tasks", value: String(completedTasks), detail: "Tasks marked complete in the current summary scope." },
+    { label: "Pending Work", value: String(pendingTasks), detail: "Open tasks still active in the current summary scope." },
+    { label: "Approved Leaves", value: String(approvedLeaves), detail: "Leave requests approved in the current summary window." },
+  ];
+}
+
+function buildCalendarItems({
+  leaves,
+  tasks,
+  userMap,
+}: {
+  leaves: Array<{ _id: { toString(): string }; userId: string; leaveType?: string; startDate: string; endDate: string; status?: string }>;
+  tasks: Array<{ _id: { toString(): string }; title: string; dueDate: string; status?: string; assignedUserId: string }>;
+  userMap: Map<string, { fullName: string; email?: string }>;
+}) {
+  const taskEvents = tasks
+    .filter((task) => task.status !== "COMPLETED")
+    .map((task) => ({
+      id: `task-${task._id.toString()}`,
+      title: task.title,
+      date: task.dueDate,
+      type: task.dueDate < getTodayDate() ? "Overdue Task" : "Task Deadline",
+      detail: userMap.get(task.assignedUserId)?.fullName
+        ? `${userMap.get(task.assignedUserId)?.fullName} • ${formatLabel(task.status ?? "PENDING")}`
+        : formatLabel(task.status ?? "PENDING"),
+    }));
+
+  const leaveEvents = leaves.map((leave) => ({
+    id: `leave-${leave._id.toString()}`,
+    title: userMap.get(leave.userId)?.fullName ?? "Employee Leave",
+    date: leave.startDate,
+    type: `${formatLabel(leave.leaveType ?? "Leave")} Leave`,
+    detail: `${leave.startDate} to ${leave.endDate} • ${formatLabel(leave.status ?? "PENDING")}`,
+  }));
+
+  return [...taskEvents, ...leaveEvents].sort((left, right) => left.date.localeCompare(right.date)).slice(0, 8);
+}
+
+function mapNotifications(notifications: Array<{ _id: { toString(): string }; title: string; message: string; createdAt?: Date | null; actionUrl?: string }>) {
+  return notifications.map((notification) => ({
+    id: notification._id.toString(),
+    title: notification.title,
+    detail: notification.message,
+    meta: formatDateTime(notification.createdAt),
+    actionUrl: notification.actionUrl ?? "",
+  }));
+}
+
+function mapTaskRow(task: {
+  _id: { toString(): string };
+  title: string;
+  description: string;
+  assignedUserId: string;
+  assignedByUserId: string;
+  dueDate: string;
+  status: string;
+  priority?: string;
+  labels?: string[];
+  attachments?: Array<{ name?: string; url?: string }>;
+  comments?: Array<{ _id?: { toString(): string }; userName?: string; role?: string; message?: string; createdAt?: Date | null }>;
+}, userMap: Map<string, string>) {
+  return {
+    id: task._id.toString(),
+    title: task.title,
+    description: task.description,
+    assignedUserId: task.assignedUserId,
+    assignedUserName: userMap.get(task.assignedUserId) ?? "Unknown employee",
+    assignedByName: userMap.get(task.assignedByUserId) ?? "Unknown manager",
+    dueDate: task.dueDate,
+    status: task.status,
+    priority: task.priority ?? "MEDIUM",
+    labels: task.labels ?? [],
+    isOverdue: task.status !== "COMPLETED" && task.dueDate < getTodayDate(),
+    attachments: mapAttachments(task.attachments),
+    comments: (task.comments ?? []).map((comment, index) => ({
+      id: comment._id?.toString() ?? `${task._id.toString()}-${index}`,
+      userName: comment.userName ?? "Unknown user",
+      role: comment.role ?? "USER",
+      message: comment.message ?? "",
+      createdAt: formatDateTime(comment.createdAt),
+    })),
+  };
+}
+
+function mapAttachments(attachments: Array<{ name?: string; url?: string }> | undefined) {
+  return (attachments ?? [])
+    .filter((attachment) => attachment?.url)
+    .map((attachment) => ({
+      name: attachment.name ?? "Attachment",
+      url: attachment.url ?? "",
+    }));
+}
+
+async function getAllActiveEmployeeIds() {
+  const users = await UserModel.find({ role: "EMPLOYEE", status: "ACTIVE" }, { _id: 1 }).lean();
+  return users.map((user) => user._id.toString());
+}
+
+function inScope(userIds: string[]) {
+  return userIds.length ? { $in: userIds } : { $in: [] as string[] };
+}
+
+function getTodayDate() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function getCurrentTimeKey() {
+  return new Date().toISOString().slice(11, 16);
+}
+
+function addDaysToDate(dateKey: string, days: number) {
+  const date = new Date(`${dateKey}T00:00:00.000Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+}
+
+function formatDate(value: Date | null | undefined) {
+  if (!value) {
+    return "";
+  }
+
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+}
+
+function formatDateTime(value: Date | null | undefined) {
+  if (!value) {
+    return "Not marked";
+  }
+
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "Not marked";
+  }
+
+  return `${date.toISOString().slice(0, 10)} ${date.toISOString().slice(11, 16)}`;
+}
+
+function formatLabel(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function getRate(value: number, total: number) {
+  if (!total) {
+    return 0;
+  }
+
+  return Math.max(0, Math.min(100, Math.round((value / total) * 100)));
+}
+
+function buildAttendanceTrend({
+  activeEmployeeIds,
+  attendanceRows,
+  leaveRows,
+  today,
+  weekStart,
+}: {
+  activeEmployeeIds: string[];
+  attendanceRows: Array<{ userId: string; dateKey?: string }>;
+  leaveRows: Array<{ userId: string; status?: string; startDate: string; endDate: string }>;
+  today: string;
+  weekStart: string;
+}) {
+  const uniqueEmployeeIds = Array.from(new Set(activeEmployeeIds));
+
+  return listDateRange(weekStart, today).map((dateKey) => {
+    const presentIds = new Set(attendanceRows.filter((row) => row.dateKey === dateKey).map((row) => row.userId));
+    const onLeaveIds = new Set(
+      leaveRows
+        .filter((leave) => leave.status === "APPROVED" && leave.startDate <= dateKey && leave.endDate >= dateKey)
+        .map((leave) => leave.userId)
+        .filter((userId) => !presentIds.has(userId)),
+    );
+
+    return {
+      label: formatDayLabel(dateKey),
+      present: presentIds.size,
+      onLeave: onLeaveIds.size,
+      absent: Math.max(uniqueEmployeeIds.length - presentIds.size - onLeaveIds.size, 0),
+    };
+  });
+}
+
+function buildLeaveTrend(leaveRows: Array<{ startDate: string }>, today: string, months = 6) {
+  const monthKeys = listMonthRange(today, months);
+  const countMap = new Map(monthKeys.map((monthKey) => [monthKey, 0]));
+
+  for (const row of leaveRows) {
+    const monthKey = row.startDate.slice(0, 7);
+    if (countMap.has(monthKey)) {
+      countMap.set(monthKey, (countMap.get(monthKey) ?? 0) + 1);
+    }
+  }
+
+  return monthKeys.map((monthKey) => ({
+    label: formatMonthLabel(monthKey),
+    count: countMap.get(monthKey) ?? 0,
+  }));
+}
+
+function buildDsrTrend({
+  activeEmployeeIds,
+  dsrRows,
+  today,
+  weekStart,
+}: {
+  activeEmployeeIds: string[];
+  dsrRows: Array<{ userId: string; workDate?: string }>;
+  today: string;
+  weekStart: string;
+}) {
+  const uniqueEmployeeIds = Array.from(new Set(activeEmployeeIds));
+
+  return listDateRange(weekStart, today).map((dateKey) => {
+    const submittedIds = new Set(dsrRows.filter((row) => row.workDate === dateKey).map((row) => row.userId));
+
+    return {
+      label: formatDayLabel(dateKey),
+      submitted: submittedIds.size,
+      missing: Math.max(uniqueEmployeeIds.length - submittedIds.size, 0),
+    };
+  });
+}
+
+function buildEmployeeProjectSummaryRows({
+  activeEmployees,
+  projects,
+}: {
+  activeEmployees: Array<{ _id: { toString(): string }; fullName: string; email: string }>;
+  projects: Array<{ assignedUserIds?: string[]; status?: string }>;
+}) {
+  return activeEmployees
+    .map((employee) => {
+      const employeeId = employee._id.toString();
+      const assignedProjects = projects.filter((project) => project.assignedUserIds?.includes(employeeId));
+      const completedProjects = assignedProjects.filter((project) => project.status === "COMPLETED").length;
+      const pendingProjects = assignedProjects.length - completedProjects;
+
+      return {
+        id: employeeId,
+        employeeName: employee.fullName,
+        employeeEmail: employee.email,
+        pendingProjects,
+        completedProjects,
+      };
+    })
+    .sort(
+      (left, right) =>
+        right.pendingProjects - left.pendingProjects ||
+        right.completedProjects - left.completedProjects ||
+        left.employeeName.localeCompare(right.employeeName),
+    );
+}
+
+function listDateRange(startDateKey: string, endDateKey: string) {
+  const dates: string[] = [];
+  let current = startDateKey;
+
+  while (current <= endDateKey) {
+    dates.push(current);
+    current = addDaysToDate(current, 1);
+  }
+
+  return dates;
+}
+
+function listMonthRange(today: string, months: number) {
+  const date = new Date(`${today}T00:00:00.000Z`);
+  date.setUTCDate(1);
+  date.setUTCMonth(date.getUTCMonth() - (months - 1));
+
+  const monthKeys: string[] = [];
+
+  for (let index = 0; index < months; index += 1) {
+    monthKeys.push(`${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}`);
+    date.setUTCMonth(date.getUTCMonth() + 1);
+  }
+
+  return monthKeys;
+}
+
+function formatDayLabel(dateKey: string) {
+  const date = new Date(`${dateKey}T00:00:00.000Z`);
+
+  return Number.isNaN(date.getTime())
+    ? dateKey
+    : date.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+}
+
+function formatMonthLabel(monthKey: string) {
+  const date = new Date(`${monthKey}-01T00:00:00.000Z`);
+
+  return Number.isNaN(date.getTime())
+    ? monthKey
+    : date.toLocaleDateString("en-US", { month: "short", timeZone: "UTC" });
+}
+
+
+
+

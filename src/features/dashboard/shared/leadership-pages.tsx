@@ -1,0 +1,66 @@
+import "server-only";
+import { notFound } from "next/navigation";
+import { AttendancePanel } from "@/features/dashboard/components/attendance-panel";
+import { DsrPanel } from "@/features/dashboard/components/dsr-panel";
+import { EmployeesManagementPanel } from "@/features/dashboard/components/employees-management-panel";
+import { LeavesPanel } from "@/features/dashboard/components/leaves-panel";
+import { ReportsPanel } from "@/features/dashboard/components/reports-panel";
+import { SettingsPanel } from "@/features/dashboard/components/settings-panel";
+import { TasksPanel } from "@/features/dashboard/components/tasks-panel";
+import type { AuthenticatedSession } from "@/features/auth/lib/auth-session";
+import {
+  getAttendancePageData,
+  getDsrPageData,
+  getEmployeesPageData,
+  getLeavesPageData,
+  getReportsPageData,
+  getSettingsPageData,
+  getTasksPageData,
+} from "@/features/dashboard/data";
+import type { DashboardPageKey } from "@/features/dashboard/shared/page-types";
+
+export async function renderLeadershipDashboardPage(page: DashboardPageKey, session: AuthenticatedSession) {
+  switch (page) {
+    case "employees": {
+      const data = await getEmployeesPageData(session);
+      return (
+        <EmployeesManagementPanel
+          managerOptions={data.managerOptions}
+          projects={data.projects}
+          readOnly={false}
+          recentUpdates={data.recentUpdates}
+          summaryCards={data.summaryCards}
+          users={data.users}
+        />
+      );
+    }
+    case "attendance": {
+      const data = await getAttendancePageData(session);
+      return <AttendancePanel data={data} />;
+    }
+    case "leaves": {
+      const data = await getLeavesPageData(session);
+      return <LeavesPanel canReview data={data} />;
+    }
+    case "tasks": {
+      const data = await getTasksPageData(session);
+      return <TasksPanel canAssign data={data} />;
+    }
+    case "dsr": {
+      const data = await getDsrPageData(session);
+      return <DsrPanel data={data} />;
+    }
+    case "reports": {
+      const data = await getReportsPageData(session);
+      return <ReportsPanel data={data} />;
+    }
+    case "settings": {
+      const data = await getSettingsPageData();
+      return <SettingsPanel data={data} />;
+    }
+    default:
+      notFound();
+  }
+}
+
+

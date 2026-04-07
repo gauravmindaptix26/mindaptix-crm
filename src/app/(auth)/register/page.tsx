@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
-import { RegisterScreen } from "@/components/auth/register-screen";
-import { getCurrentSession } from "@/lib/auth/auth-session";
-import { isPublicRegistrationOpen } from "@/lib/auth/user-admin";
+import { RegisterScreen } from "@/features/auth/components/register-screen";
+import { getCurrentSession } from "@/features/auth/lib/auth-session";
+import { isPublicRegistrationOpen } from "@/features/auth/lib/user-admin";
 
 export default async function RegisterPage() {
   const session = await getCurrentSession();
@@ -14,3 +14,5 @@ export default async function RegisterPage() {
 
   return <RegisterScreen signupClosed={signupClosed} />;
 }
+
+

@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
-import { DashboardShell } from "@/components/dashboard/dashboard-shell";
-import { getCurrentSession } from "@/lib/auth/auth-session";
+import { DashboardShell } from "@/features/dashboard/components/dashboard-shell";
+import { getCurrentSession } from "@/features/auth/lib/auth-session";
 
 export default async function DashboardLayout({
   children,
@@ -15,3 +15,5 @@ export default async function DashboardLayout({
 
   return <DashboardShell session={session}>{children}</DashboardShell>;
 }
+
+
