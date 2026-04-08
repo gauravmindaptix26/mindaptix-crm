@@ -45,17 +45,17 @@ export function EmployeeDashboardOverview({ overview, roleBadge }: EmployeeDashb
         ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1.2fr)_380px]">
+      <section className="grid gap-6 xl:items-start xl:grid-cols-[minmax(0,1.2fr)_380px]">
         <TaskFeedPanel emptyMessage={overview.primaryEmptyMessage} items={overview.primaryItems} title={overview.primaryListTitle} />
         <FocusPanel emptyMessage={overview.secondaryEmptyMessage} items={overview.secondaryItems} title={overview.secondaryListTitle} />
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.88fr)]">
+      <section className="grid gap-6 xl:items-start xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.88fr)]">
         <WeeklySummaryPanel cards={overview.weeklySummaryCards ?? []} title={overview.weeklySummaryTitle ?? "Weekly Summary"} />
         <NotificationPanel items={overview.notifications ?? []} title={overview.notificationTitle ?? "Notifications"} />
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
+      <section className="grid gap-6 xl:items-start xl:grid-cols-[minmax(0,1fr)_minmax(320px,0.9fr)]">
         <CalendarPanel items={overview.calendarItems ?? []} title={overview.calendarTitle ?? "Upcoming Calendar"} />
         <PerformancePanel rows={overview.performanceRows ?? []} title={overview.performanceTitle ?? "Performance"} />
       </section>
