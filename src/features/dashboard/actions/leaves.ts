@@ -5,6 +5,7 @@ import { getCurrentSession } from "@/features/auth/lib/auth-session";
 import connectDb from "@/database/mongodb/connect";
 import { createNotificationsForUsers, getAdminUserIds } from "@/features/notifications/service";
 import { LEAVE_STATUSES, LEAVE_TYPES, LeaveRequestModel, type LeaveStatus, type LeaveType } from "@/database/mongodb/models/leave-request";
+import { getVisibleUserIdsForSession } from "@/features/dashboard/team-scope";
 import { UserModel } from "@/database/mongodb/models/user";
 
 type LeaveState = {
@@ -39,6 +40,13 @@ export async function applyLeaveRequest(_previousState: LeaveState, formData: Fo
         endDate,
         reason,
       },
+    };
+  }
+
+  if (endDate < startDate) {
+    return {
+      error: "End date cannot be earlier than start date.",
+      values: { leaveType: leaveType as LeaveType, startDate, endDate, reason },
     };
   }
 
@@ -95,6 +103,14 @@ export async function reviewLeaveRequest(formData: FormData) {
 
   if (!leaveRequest) {
     throw new Error("Leave request not found.");
+  }
+
+  if (session.user.role === "MANAGER") {
+    const visibleUserIds = await getVisibleUserIdsForSession(session, { employeesOnly: true });
+
+    if (!visibleUserIds.includes(leaveRequest.userId)) {
+      throw new Error("You can only review leave requests from your team.");
+    }
   }
 
   await LeaveRequestModel.findByIdAndUpdate(leaveId, {

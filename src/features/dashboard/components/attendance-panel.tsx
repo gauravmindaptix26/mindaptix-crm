@@ -17,45 +17,51 @@ export function AttendancePanel({ data }: AttendancePanelProps) {
         ))}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-        <PanelSection
-          description="Use these buttons for simple login-based attendance. Mark check-in once at the start of the day and check-out when you finish."
-          eyebrow="Mark Attendance"
-          title="Today"
-        >
-          <div className="mt-6 rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5">
-            <p className="text-sm font-semibold text-slate-900">
-              {data.todayRecord ? `${data.todayRecord.status} for ${data.todayRecord.dateKey}` : "Attendance not marked for today"}
-            </p>
-            <p className="mt-3 text-sm text-slate-500">
-              Check In: {data.todayRecord?.checkInAt ?? "Not marked"}
-            </p>
-            <p className="mt-1 text-sm text-slate-500">
-              Check Out: {data.todayRecord?.checkOutAt ?? "Not marked"}
-            </p>
+      <section className={`grid gap-6 ${data.canMarkAttendance ? "xl:grid-cols-[420px_minmax(0,1fr)]" : ""}`}>
+        {data.canMarkAttendance ? (
+          <PanelSection
+            description="Use these buttons for simple login-based attendance. Mark check-in once at the start of the day and check-out when you finish."
+            eyebrow="Mark Attendance"
+            title="Today"
+          >
+            <div className="mt-6 rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5">
+              <p className="text-sm font-semibold text-slate-900">
+                {data.todayRecord ? `${data.todayRecord.status} for ${data.todayRecord.dateKey}` : "Attendance not marked for today"}
+              </p>
+              <p className="mt-3 text-sm text-slate-500">
+                Check In: {data.todayRecord?.checkInAt ?? "Not marked"}
+              </p>
+              <p className="mt-1 text-sm text-slate-500">
+                Check Out: {data.todayRecord?.checkOutAt ?? "Not marked"}
+              </p>
 
-            <div className="mt-5 grid gap-3 sm:grid-cols-2">
-              <form action={checkInAttendance}>
-                <Button className="sm:w-auto" type="submit">
-                  Check In
-                </Button>
-              </form>
-              <form action={checkOutAttendance}>
-                <Button
-                  className="border border-slate-200 bg-white text-slate-900 shadow-none hover:bg-slate-50 sm:w-auto"
-                  type="submit"
-                >
-                  Check Out
-                </Button>
-              </form>
+              <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                <form action={checkInAttendance}>
+                  <Button className="sm:w-auto" type="submit">
+                    Check In
+                  </Button>
+                </form>
+                <form action={checkOutAttendance}>
+                  <Button
+                    className="border border-slate-200 bg-white text-slate-900 shadow-none hover:bg-slate-50 sm:w-auto"
+                    type="submit"
+                  >
+                    Check Out
+                  </Button>
+                </form>
+              </div>
             </div>
-          </div>
-        </PanelSection>
+          </PanelSection>
+        ) : null}
 
         <PanelSection
-          description="Simple daily attendance view for everyone visible in your role scope."
+          description={
+            data.canMarkAttendance
+              ? "Simple daily attendance view for everyone visible in your role scope."
+              : "Today attendance status for all employees. You can see who marked attendance and who is still pending."
+          }
           eyebrow="Today Attendance"
-          title="Current Day View"
+          title={data.canMarkAttendance ? "Current Day View" : "Employee Attendance Status"}
         >
           <div className="mt-6 overflow-hidden rounded-[1.5rem] border border-slate-100">
             <div className="grid grid-cols-4 gap-4 bg-slate-50 px-5 py-3 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
@@ -68,10 +74,15 @@ export function AttendancePanel({ data }: AttendancePanelProps) {
               {data.todayRecords.length ? (
                 data.todayRecords.map((record) => (
                   <div className="grid grid-cols-4 gap-4 px-5 py-4 text-sm text-slate-700" key={record.id}>
-                    <span className="font-medium text-slate-900">{record.employeeName}</span>
+                    <div>
+                      <span className="font-medium text-slate-900">{record.employeeName}</span>
+                      <p className="mt-1 text-xs text-slate-500">{record.employeeEmail}</p>
+                    </div>
                     <span>{record.checkInAt}</span>
                     <span>{record.checkOutAt}</span>
-                    <span>{formatLabel(record.status)}</span>
+                    <span className={record.status === "NOT_MARKED" ? "font-semibold text-rose-600" : "font-medium text-emerald-700"}>
+                      {formatLabel(record.status)}
+                    </span>
                   </div>
                 ))
               ) : (

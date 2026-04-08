@@ -9,10 +9,11 @@ type DashboardTableProps = {
   columns: DashboardTableColumn[];
   emptyMessage: string;
   hasRows: boolean;
+  hideScrollbar?: boolean;
   children: ReactNode;
 };
 
-export function DashboardTable({ children, columns, emptyMessage, hasRows }: DashboardTableProps) {
+export function DashboardTable({ children, columns, emptyMessage, hasRows, hideScrollbar = false }: DashboardTableProps) {
   if (!hasRows) {
     return (
       <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">
@@ -22,7 +23,7 @@ export function DashboardTable({ children, columns, emptyMessage, hasRows }: Das
   }
 
   return (
-    <div className="overflow-x-auto rounded-[1.5rem] border border-slate-100">
+    <div className={`w-full max-w-full overflow-x-auto rounded-[1.5rem] border border-slate-100 ${hideScrollbar ? "hide-scrollbar" : ""}`}>
       <table className="min-w-full border-collapse bg-white text-sm text-slate-700">
         <thead className="bg-slate-50">
           <tr>

@@ -141,6 +141,10 @@ function getServerHydrationSnapshot() {
 }
 
 function isItemActive(pathname: string, item: DashboardNavItem) {
+  if (item.href === "/dashboard") {
+    return pathname === item.href;
+  }
+
   return pathname === item.href || pathname.startsWith(`${item.href}/`);
 }
 

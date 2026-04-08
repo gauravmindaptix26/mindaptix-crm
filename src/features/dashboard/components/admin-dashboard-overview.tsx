@@ -136,22 +136,38 @@ export function AdminDashboardOverview({
       </section>
 
       {showExecutiveCharts ? (
-        <>
-          <section className="grid gap-6 xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)_minmax(320px,0.8fr)]">
+        <section className="rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-5 shadow-[0_12px_30px_rgba(15,23,42,0.04)]">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.28em] text-blue-500">Operational Snapshot</p>
+              <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Charts And Graphs</h3>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
+                Attendance, tasks, projects, leave, and DSR movement are grouped here for faster review.
+              </p>
+            </div>
+            <div className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">
+              Live Overview
+            </div>
+          </div>
+
+          <div className="mt-5 space-y-5">
+            <section className="grid gap-5 xl:items-start xl:grid-cols-[minmax(0,1.4fr)_minmax(320px,0.8fr)_minmax(320px,0.8fr)]">
             <ChartPanel description="Daily employee movement for the last 7 days." title="Attendance Overview">
               {attendanceTrend?.length ? (
-                <ResponsiveContainer height={300} width="100%">
-                  <BarChart data={attendanceTrend}>
-                    <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="label" stroke="#64748b" tickLine={false} axisLine={false} />
-                    <YAxis allowDecimals={false} stroke="#64748b" tickLine={false} axisLine={false} />
-                    <Tooltip />
-                    <Legend />
-                    <Bar dataKey="present" fill="#2563eb" name="Present" radius={[10, 10, 0, 0]} />
-                    <Bar dataKey="onLeave" fill="#f59e0b" name="On Leave" radius={[10, 10, 0, 0]} />
-                    <Bar dataKey="absent" fill="#ef4444" name="Absent" radius={[10, 10, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <div className="rounded-[1.5rem] border border-slate-100 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-3">
+                  <ResponsiveContainer height={248} width="100%">
+                    <BarChart data={attendanceTrend}>
+                      <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="label" stroke="#64748b" tickLine={false} axisLine={false} />
+                      <YAxis allowDecimals={false} stroke="#64748b" tickLine={false} axisLine={false} />
+                      <Tooltip />
+                      <Legend />
+                      <Bar dataKey="present" fill="#2563eb" name="Present" radius={[10, 10, 0, 0]} />
+                      <Bar dataKey="onLeave" fill="#f59e0b" name="On Leave" radius={[10, 10, 0, 0]} />
+                      <Bar dataKey="absent" fill="#ef4444" name="Absent" radius={[10, 10, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
               ) : (
                 <EmptyState message="Attendance chart data is not available yet." />
               )}
@@ -159,22 +175,24 @@ export function AdminDashboardOverview({
 
             <BreakdownPanel data={attendanceBreakdown ?? []} title="Present vs Absent" />
             <BreakdownPanel data={taskStatusBreakdown ?? []} title="Task Status" />
-          </section>
+            </section>
 
-          <section className="grid gap-6 xl:grid-cols-[minmax(320px,0.9fr)_minmax(320px,0.9fr)_minmax(320px,0.9fr)]">
+            <section className="grid gap-5 xl:items-start xl:grid-cols-[minmax(320px,0.9fr)_minmax(320px,0.9fr)_minmax(320px,0.9fr)]">
             <BreakdownPanel data={projectStatusBreakdown ?? []} title="Project Status" />
 
             <ChartPanel description="Monthly leave request trend for planning capacity." title="Leave Trend">
               {leaveTrend?.length ? (
-                <ResponsiveContainer height={260} width="100%">
-                  <LineChart data={leaveTrend}>
-                    <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="label" stroke="#64748b" tickLine={false} axisLine={false} />
-                    <YAxis allowDecimals={false} stroke="#64748b" tickLine={false} axisLine={false} />
-                    <Tooltip />
-                    <Line dataKey="count" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} type="monotone" />
-                  </LineChart>
-                </ResponsiveContainer>
+                <div className="rounded-[1.5rem] border border-slate-100 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-3">
+                  <ResponsiveContainer height={230} width="100%">
+                    <LineChart data={leaveTrend}>
+                      <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="label" stroke="#64748b" tickLine={false} axisLine={false} />
+                      <YAxis allowDecimals={false} stroke="#64748b" tickLine={false} axisLine={false} />
+                      <Tooltip />
+                      <Line dataKey="count" stroke="#2563eb" strokeWidth={3} dot={{ r: 4 }} type="monotone" />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </div>
               ) : (
                 <EmptyState message="Leave trend data is not available yet." />
               )}
@@ -182,29 +200,32 @@ export function AdminDashboardOverview({
 
             <ChartPanel description="Daily DSR discipline for the last 7 days." title="DSR Submission Rate">
               {dsrTrend?.length ? (
-                <ResponsiveContainer height={260} width="100%">
-                  <AreaChart data={dsrTrend}>
-                    <defs>
-                      <linearGradient id="submittedGradient" x1="0" x2="0" y1="0" y2="1">
-                        <stop offset="5%" stopColor="#2563eb" stopOpacity={0.35} />
-                        <stop offset="95%" stopColor="#2563eb" stopOpacity={0.02} />
-                      </linearGradient>
-                    </defs>
-                    <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
-                    <XAxis dataKey="label" stroke="#64748b" tickLine={false} axisLine={false} />
-                    <YAxis allowDecimals={false} stroke="#64748b" tickLine={false} axisLine={false} />
-                    <Tooltip />
-                    <Legend />
-                    <Area dataKey="submitted" fill="url(#submittedGradient)" name="Submitted" stroke="#2563eb" strokeWidth={3} type="monotone" />
-                    <Line dataKey="missing" name="Missing" stroke="#ef4444" strokeWidth={3} type="monotone" dot={{ r: 3 }} />
-                  </AreaChart>
-                </ResponsiveContainer>
+                <div className="rounded-[1.5rem] border border-slate-100 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-3">
+                  <ResponsiveContainer height={230} width="100%">
+                    <AreaChart data={dsrTrend}>
+                      <defs>
+                        <linearGradient id="submittedGradient" x1="0" x2="0" y1="0" y2="1">
+                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.35} />
+                          <stop offset="95%" stopColor="#2563eb" stopOpacity={0.02} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid stroke="#e2e8f0" strokeDasharray="3 3" vertical={false} />
+                      <XAxis dataKey="label" stroke="#64748b" tickLine={false} axisLine={false} />
+                      <YAxis allowDecimals={false} stroke="#64748b" tickLine={false} axisLine={false} />
+                      <Tooltip />
+                      <Legend />
+                      <Area dataKey="submitted" fill="url(#submittedGradient)" name="Submitted" stroke="#2563eb" strokeWidth={3} type="monotone" />
+                      <Line dataKey="missing" name="Missing" stroke="#ef4444" strokeWidth={3} type="monotone" dot={{ r: 3 }} />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               ) : (
                 <EmptyState message="DSR trend data is not available yet." />
               )}
             </ChartPanel>
-          </section>
-        </>
+            </section>
+          </div>
+        </section>
       ) : null}
 
       {employeeProjectRows?.length ? <EmployeeProjectPanel rows={employeeProjectRows} /> : null}
@@ -255,32 +276,42 @@ function ChartPanel({
   title: string;
 }) {
   return (
-    <section className="rounded-[2rem] border border-slate-100 bg-white p-6 shadow-[0_18px_45px_rgba(15,23,42,0.06)]">
+    <section className="rounded-[1.8rem] border border-slate-200/80 bg-white p-4 shadow-[0_14px_34px_rgba(15,23,42,0.05)]">
       <p className="text-xs font-semibold uppercase tracking-[0.28em] text-blue-500">{title}</p>
-      <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
-      <div className="mt-6">{children}</div>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+      <div className="mt-4">{children}</div>
     </section>
   );
 }
 
 function BreakdownPanel({ data, title }: { data: DashboardBreakdownSlice[]; title: string }) {
+  const total = data.reduce((sum, entry) => sum + entry.value, 0);
+
   return (
     <ChartPanel description="Distribution snapshot for today’s workflow state." title={title}>
       {data.length ? (
         <>
-          <ResponsiveContainer height={260} width="100%">
-            <PieChart>
-              <Pie data={data} dataKey="value" innerRadius={62} outerRadius={96} paddingAngle={3}>
-                {data.map((entry) => (
-                  <Cell fill={entry.color} key={entry.label} />
-                ))}
-              </Pie>
-              <Tooltip />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="mt-4 grid gap-3">
+          {total > 0 ? (
+            <div className="rounded-[1.5rem] border border-slate-100 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-3">
+              <ResponsiveContainer height={208} width="100%">
+                <PieChart>
+                  <Pie data={data} dataKey="value" innerRadius={52} outerRadius={82} paddingAngle={3}>
+                    {data.map((entry) => (
+                      <Cell fill={entry.color} key={entry.label} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="rounded-[1.2rem] border border-dashed border-slate-200 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+              No activity available for this breakdown right now.
+            </div>
+          )}
+          <div className="mt-3 grid gap-2.5">
             {data.map((entry) => (
-              <div className="flex items-center justify-between rounded-[1rem] border border-slate-100 bg-slate-50 px-4 py-3" key={entry.label}>
+              <div className="flex items-center justify-between rounded-[1rem] border border-slate-100 bg-slate-50 px-4 py-2.5" key={entry.label}>
                 <div className="flex items-center gap-3">
                   <span className="h-3 w-3 rounded-full" style={{ backgroundColor: entry.color }} />
                   <span className="text-sm font-medium text-slate-700">{entry.label}</span>

@@ -182,6 +182,7 @@ export type AttendanceMonthlyRow = {
 };
 
 export type AttendancePageData = {
+  canMarkAttendance: boolean;
   summaryCards: SummaryCard[];
   todayRecord: AttendanceRecordView | null;
   todayRecords: AttendanceRecordView[];
@@ -190,18 +191,32 @@ export type AttendancePageData = {
 
 export type LeaveEntry = {
   id: string;
+  employeeId: string;
   employeeName: string;
   employeeEmail: string;
   leaveType: string;
   startDate: string;
   endDate: string;
+  requestedDays: number;
   reason: string;
   status: string;
+};
+
+export type LeaveEmployeeSummary = {
+  id: string;
+  employeeName: string;
+  employeeEmail: string;
+  approvedRequests: number;
+  pendingRequests: number;
+  rejectedRequests: number;
+  approvedDays: number;
+  requestedDays: number;
 };
 
 export type LeavePageData = {
   summaryCards: SummaryCard[];
   leaves: LeaveEntry[];
+  employeeSummaries: LeaveEmployeeSummary[];
 };
 
 export type TaskCommentView = {
@@ -637,6 +652,7 @@ export async function getAttendancePageData(session: AuthenticatedSession): Prom
 
   const activeUsers = users.filter((user) => user.status === "ACTIVE");
   const userMap = new Map(users.map((user) => [user._id.toString(), user]));
+  const todayRecordMap = new Map(todayRecords.map((record) => [record.userId, record]));
   const presentCount = new Set(todayRecords.map((record) => record.userId)).size;
   const completedCount = todayRecords.filter((row) => row.status === "COMPLETED").length;
   const missingCount = Math.max(activeUsers.length - presentCount, 0);
@@ -657,6 +673,7 @@ export async function getAttendancePageData(session: AuthenticatedSession): Prom
   }
 
   return {
+    canMarkAttendance: session.user.role === "EMPLOYEE",
     summaryCards: [
       { label: "Present Today", value: String(presentCount), detail: "Attendance entries marked for today." },
       { label: "Checked Out", value: String(completedCount), detail: "People who have completed checkout." },
@@ -674,15 +691,37 @@ export async function getAttendancePageData(session: AuthenticatedSession): Prom
           status: todayRecord.status,
         }
       : null,
-    todayRecords: todayRecords.map((record) => ({
-      id: record._id.toString(),
-      employeeName: userMap.get(record.userId)?.fullName ?? "Unknown employee",
-      employeeEmail: userMap.get(record.userId)?.email ?? "",
-      dateKey: record.dateKey,
-      checkInAt: formatDateTime(record.checkInAt),
-      checkOutAt: formatDateTime(record.checkOutAt),
-      status: record.status,
-    })),
+    todayRecords: activeUsers
+      .map((user) => {
+        const record = todayRecordMap.get(user._id.toString());
+
+        if (!record) {
+          return {
+            id: `missing-${user._id.toString()}`,
+            employeeName: user.fullName,
+            employeeEmail: user.email,
+            dateKey: today,
+            checkInAt: "Not marked",
+            checkOutAt: "Not marked",
+            status: "NOT_MARKED",
+          };
+        }
+
+        return {
+          id: record._id.toString(),
+          employeeName: user.fullName,
+          employeeEmail: user.email,
+          dateKey: record.dateKey,
+          checkInAt: formatDateTime(record.checkInAt),
+          checkOutAt: formatDateTime(record.checkOutAt),
+          status: record.status,
+        };
+      })
+      .sort((left, right) => {
+        const leftPending = left.status === "NOT_MARKED" ? 1 : 0;
+        const rightPending = right.status === "NOT_MARKED" ? 1 : 0;
+        return rightPending - leftPending || left.employeeName.localeCompare(right.employeeName);
+      }),
     monthlyRows: Array.from(monthlyMap.values()).sort((left, right) => left.employeeName.localeCompare(right.employeeName)),
   };
 }
@@ -692,9 +731,9 @@ export async function getLeavesPageData(session: AuthenticatedSession): Promise<
 
   const visibleUserIds = await getVisibleUserIdsForSession(session, { employeesOnly: true });
   const leaveFilter =
-    session.user.role === "SUPER_ADMIN" || session.user.role === "MANAGER"
+    session.user.role === "SUPER_ADMIN"
       ? {}
-      : { userId: inScope(session.user.role === "EMPLOYEE" ? [session.user.id] : visibleUserIds) };
+      : { userId: inScope(session.user.role === "MANAGER" ? visibleUserIds : [session.user.id]) };
 
   const [leaves, users] = await Promise.all([
     LeaveRequestModel.find(leaveFilter).sort({ createdAt: -1 }).lean(),
@@ -702,6 +741,35 @@ export async function getLeavesPageData(session: AuthenticatedSession): Promise<
   ]);
 
   const userMap = new Map(users.map((user) => [user._id.toString(), user]));
+  const employeeSummaryMap = new Map<string, LeaveEmployeeSummary>();
+
+  for (const leave of leaves) {
+    const employeeId = leave.userId;
+    const employee = userMap.get(employeeId);
+    const requestedDays = getDateRangeDays(leave.startDate, leave.endDate);
+    const summary = employeeSummaryMap.get(employeeId) ?? {
+      id: employeeId,
+      employeeName: employee?.fullName ?? "Unknown employee",
+      employeeEmail: employee?.email ?? "",
+      approvedRequests: 0,
+      pendingRequests: 0,
+      rejectedRequests: 0,
+      approvedDays: 0,
+      requestedDays: 0,
+    };
+
+    summary.requestedDays += requestedDays;
+    if (leave.status === "APPROVED") {
+      summary.approvedRequests += 1;
+      summary.approvedDays += requestedDays;
+    } else if (leave.status === "REJECTED") {
+      summary.rejectedRequests += 1;
+    } else {
+      summary.pendingRequests += 1;
+    }
+
+    employeeSummaryMap.set(employeeId, summary);
+  }
 
   return {
     summaryCards: [
@@ -712,14 +780,22 @@ export async function getLeavesPageData(session: AuthenticatedSession): Promise<
     ],
     leaves: leaves.map((leave) => ({
       id: leave._id.toString(),
+      employeeId: leave.userId,
       employeeName: userMap.get(leave.userId)?.fullName ?? "Unknown employee",
       employeeEmail: userMap.get(leave.userId)?.email ?? "",
       leaveType: leave.leaveType,
       startDate: leave.startDate,
       endDate: leave.endDate,
+      requestedDays: getDateRangeDays(leave.startDate, leave.endDate),
       reason: leave.reason,
       status: leave.status,
     })),
+    employeeSummaries: Array.from(employeeSummaryMap.values()).sort(
+      (left, right) =>
+        right.approvedDays - left.approvedDays ||
+        right.pendingRequests - left.pendingRequests ||
+        left.employeeName.localeCompare(right.employeeName),
+    ),
   };
 }
 
@@ -909,17 +985,19 @@ export async function getReportsPageData(session: AuthenticatedSession): Promise
     }),
     calendarItems: buildCalendarItems({ leaves, tasks, userMap }).slice(0, 10),
     performanceRows: await buildPerformanceRows(scopedIds),
-    attendanceRows: Array.from(attendanceRows.values()).sort((left, right) => left.employeeName.localeCompare(right.employeeName)),
-    leaveRows: leaves.map((leave) => ({
-      id: leave._id.toString(),
-      employeeName: userMap.get(leave.userId)?.fullName ?? "Unknown employee",
-      employeeEmail: userMap.get(leave.userId)?.email ?? "",
-      leaveType: leave.leaveType,
-      startDate: leave.startDate,
-      endDate: leave.endDate,
-      reason: leave.reason,
-      status: leave.status,
-    })),
+      attendanceRows: Array.from(attendanceRows.values()).sort((left, right) => left.employeeName.localeCompare(right.employeeName)),
+      leaveRows: leaves.map((leave) => ({
+        id: leave._id.toString(),
+        employeeId: leave.userId,
+        employeeName: userMap.get(leave.userId)?.fullName ?? "Unknown employee",
+        employeeEmail: userMap.get(leave.userId)?.email ?? "",
+        leaveType: leave.leaveType,
+        startDate: leave.startDate,
+        endDate: leave.endDate,
+        requestedDays: getDateRangeDays(leave.startDate, leave.endDate),
+        reason: leave.reason,
+        status: leave.status,
+      })),
     taskRows: tasks.map((task) => mapTaskRow(task, new Map(users.map((user) => [user._id.toString(), user.fullName])))),
   };
 }
@@ -1135,6 +1213,13 @@ function addDaysToDate(dateKey: string, days: number) {
   const date = new Date(`${dateKey}T00:00:00.000Z`);
   date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
+}
+
+function getDateRangeDays(startDate: string, endDate: string) {
+  const start = new Date(`${startDate}T00:00:00.000Z`);
+  const end = new Date(`${endDate}T00:00:00.000Z`);
+  const differenceInDays = Math.floor((end.getTime() - start.getTime()) / 86_400_000);
+  return differenceInDays >= 0 ? differenceInDays + 1 : 0;
 }
 
 function formatDate(value: Date | null | undefined) {
