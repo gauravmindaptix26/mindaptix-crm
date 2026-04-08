@@ -31,7 +31,7 @@ export async function buildLeadershipDashboardOverview(
     .sort({ fullName: 1 })
     .lean();
   const activeSalesUsers =
-    session.user.role === "SUPER_ADMIN"
+    session.user.role === "SUPER_ADMIN" || session.user.role === "MANAGER"
       ? await UserModel.find({ role: "SALES", status: "ACTIVE" }, { fullName: 1, email: 1 }).sort({ fullName: 1 }).lean()
       : [];
   const employeeIds = activeEmployees.map((employee) => employee._id.toString());
@@ -98,7 +98,7 @@ export async function buildLeadershipDashboardOverview(
     })),
   });
   const executiveSections =
-    session.user.role === "SUPER_ADMIN"
+    session.user.role === "SUPER_ADMIN" || session.user.role === "MANAGER"
       ? buildExecutiveOverviewSections({
           activeEmployees,
           activeSalesUsers,

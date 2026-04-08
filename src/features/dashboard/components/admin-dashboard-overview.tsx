@@ -85,6 +85,7 @@ export function AdminDashboardOverview({
   primaryItems,
   primaryListTitle,
   projectStatusBreakdown,
+  roleBadge,
   secondaryEmptyMessage,
   secondaryItems,
   secondaryListTitle,
@@ -113,7 +114,7 @@ export function AdminDashboardOverview({
                 <h3 className="mt-2 text-[1.45rem] font-semibold tracking-tight text-slate-950">Leadership Control Boxes</h3>
               </div>
               <div className="rounded-full border border-blue-200 bg-white px-5 py-2.5 text-[0.78rem] font-bold uppercase tracking-[0.24em] text-blue-700 shadow-[0_10px_26px_rgba(37,99,235,0.08)]">
-                Super Admin View
+                {roleBadge ? `${roleBadge} View` : "Leadership View"}
               </div>
             </div>
           </div>
