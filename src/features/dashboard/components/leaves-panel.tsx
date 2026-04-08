@@ -167,7 +167,7 @@ export function LeavesPanel({ canReview, data }: LeavesPanelProps) {
               </div>
             ) : null}
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className={`grid gap-4 ${canReview ? "xl:grid-cols-2" : "grid-cols-1"}`}>
               {data.leaves.length ? (
                 data.leaves.map((leave) => (
                   <LeaveRequestCard canReview={canReview} key={leave.id} leave={leave} />
@@ -311,20 +311,27 @@ function LeaveRequestCard({
         </div>
       </div>
 
-      <div className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_auto]">
+      <div className="mt-5 grid gap-3 lg:grid-cols-[minmax(0,1fr)_140px_160px]">
         <div className="rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-3">
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-400">Leave Dates</p>
-          <p className="mt-2 text-sm font-semibold text-slate-900">{leave.startDate}</p>
-          <p className="mt-1 text-xs uppercase tracking-[0.18em] text-slate-400">to</p>
-          <p className="mt-1 text-sm font-semibold text-slate-900">{leave.endDate}</p>
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-sm font-semibold text-slate-900">
+            <span>{leave.startDate}</span>
+            <span className="text-xs uppercase tracking-[0.18em] text-slate-400">to</span>
+            <span>{leave.endDate}</span>
+          </div>
         </div>
 
-        <div className="flex flex-wrap gap-3">
-          <ValueBlock label="days" tone="primary" value={leave.requestedDays} />
-          <div className="inline-flex min-w-[120px] flex-col rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-700">
-            <span className="text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-slate-400">Action</span>
-            <span className="mt-2 text-sm font-semibold text-slate-700">{leave.status === "PENDING" ? "Needs review" : "Processed"}</span>
-          </div>
+        <div className="rounded-2xl border border-sky-200/80 bg-[linear-gradient(180deg,#eff6ff_0%,#f8fafc_100%)] px-4 py-3 text-sky-700">
+          <p className="text-[0.64rem] font-semibold uppercase tracking-[0.18em] opacity-80">Duration</p>
+          <p className="mt-2 text-3xl font-semibold leading-none">{leave.requestedDays}</p>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.18em] opacity-80">
+            {leave.requestedDays === 1 ? "day" : "days"}
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-700">
+          <p className="text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-slate-400">Action</p>
+          <p className="mt-2 text-sm font-semibold text-slate-700">{leave.status === "PENDING" ? "Needs review" : "Processed"}</p>
         </div>
       </div>
 
