@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { loginUser } from "@/features/auth/actions";
 import { Feedback } from "@/shared/ui/feedback";
@@ -20,6 +21,16 @@ export function LoginCard({ registered = false, signupClosed = false }: LoginCar
   return (
     <Card className="crm-panel w-full max-w-[30rem] rounded-[2rem] px-5 py-3.5 sm:px-7 sm:py-4">
       <div className="text-center">
+        <div className="mb-4 flex justify-center">
+          <Image
+            alt="Mindaptix CRM"
+            className="h-auto w-auto max-w-[10.5rem] object-contain"
+            height={68}
+            priority
+            src="/3.png"
+            width={168}
+          />
+        </div>
         <h2 className="text-[1.7rem] font-semibold tracking-tight text-white sm:text-[2.1rem]">
           <span className="inline-block min-w-[18rem] whitespace-nowrap sm:min-w-[20rem]">Welcome Back to</span>{" "}
           <span className="mt-1 block whitespace-nowrap bg-gradient-to-r from-blue-300 to-blue-500 bg-clip-text text-transparent">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { registerUser } from "@/features/auth/actions";
 import { Feedback } from "@/shared/ui/feedback";
@@ -19,6 +20,16 @@ export function RegisterCard({ signupClosed = false }: RegisterCardProps) {
   return (
     <Card className="crm-panel w-full max-w-[33rem] rounded-[2rem] px-6 py-5 sm:px-9 sm:py-6">
       <div className="text-center">
+        <div className="mb-5 flex justify-center">
+          <Image
+            alt="Mindaptix CRM"
+            className="h-auto w-auto max-w-[11rem] object-contain"
+            height={72}
+            priority
+            src="/3.png"
+            width={176}
+          />
+        </div>
         <h2 className="text-[2rem] font-semibold tracking-tight text-white sm:text-[2.5rem]">
           <span className="bg-gradient-to-r from-blue-300 to-blue-500 bg-clip-text text-transparent">
             Create Your Account

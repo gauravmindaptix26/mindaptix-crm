@@ -5,9 +5,9 @@ export const metadata: Metadata = {
   title: "Mindaptix CRM",
   description: "Mindaptix CRM login portal for managing company records and workflows.",
   icons: {
-    icon: "/icon.svg",
-    shortcut: "/icon.svg",
-    apple: "/icon.svg",
+    icon: "/3.png",
+    shortcut: "/3.png",
+    apple: "/3.png",
   },
 };
 
