@@ -141,7 +141,7 @@ function TaskFeedPanel({
             </article>
           ))
         ) : (
-          <EmptyState message={emptyMessage} />
+          <TaskQueueEmptyState message={emptyMessage} />
         )}
       </div>
     </section>
@@ -308,8 +308,77 @@ function MiniMetric({ label, value }: { label: string; value: string }) {
   );
 }
 
+function TaskQueueEmptyState({ message }: { message: string }) {
+  return (
+    <div className="overflow-hidden rounded-[1.7rem] border border-slate-200 bg-[linear-gradient(135deg,#eff6ff_0%,#ffffff_55%,#f8fafc_100%)] p-5 shadow-[0_12px_28px_rgba(15,23,42,0.04)]">
+      <div className="flex flex-wrap items-start gap-4">
+        <div className="flex h-14 w-14 items-center justify-center rounded-[1.3rem] bg-[linear-gradient(135deg,#2563eb_0%,#0f172a_100%)] text-white shadow-[0_16px_32px_rgba(37,99,235,0.22)]">
+          <TaskQueueIcon />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-blue-600">Current Status</p>
+          <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">No active task assignments</h3>
+          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">{message}</p>
+        </div>
+      </div>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
+        <QuickHint
+          description="Check pending leave reviews and leave plan."
+          href="/dashboard/leaves"
+          label="Go To Leaves"
+          meta="Plan ahead"
+        />
+        <QuickHint
+          description="Submit today's work update so reporting stays clean."
+          href="/dashboard/dsr"
+          label="Open DSR"
+          meta="Daily update"
+        />
+        <QuickHint
+          description="Mark attendance and keep today's status complete."
+          href="/dashboard/attendance"
+          label="Open Attendance"
+          meta="Stay updated"
+        />
+      </div>
+    </div>
+  );
+}
+
+function QuickHint({
+  description,
+  href,
+  label,
+  meta,
+}: {
+  description: string;
+  href: string;
+  label: string;
+  meta: string;
+}) {
+  return (
+    <Link className="rounded-[1.3rem] border border-slate-200 bg-white p-4 transition hover:border-blue-200 hover:bg-blue-50/40" href={href}>
+      <p className="text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-slate-500">{meta}</p>
+      <p className="mt-2 text-base font-semibold text-slate-950">{label}</p>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+    </Link>
+  );
+}
+
 function EmptyState({ message }: { message: string }) {
   return <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">{message}</div>;
+}
+
+function TaskQueueIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="24" viewBox="0 0 24 24" width="24">
+      <rect height="13" rx="2.2" stroke="currentColor" strokeWidth="1.7" width="16" x="4" y="7" />
+      <path d="M9 7V5.6A1.6 1.6 0 0 1 10.6 4h2.8A1.6 1.6 0 0 1 15 5.6V7" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M4 12.5h16" stroke="currentColor" strokeWidth="1.7" />
+      <path d="M10.5 12.5v2h3v-2" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.7" />
+    </svg>
+  );
 }
 
 function getFocusHref(id: string) {
