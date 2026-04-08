@@ -69,6 +69,17 @@ export type EmployeeProjectSummaryRow = {
   completedProjects: number;
 };
 
+export type ExecutiveOverviewSection = {
+  id: string;
+  badge: string;
+  title: string;
+  description: string;
+  note?: string;
+  metrics: SummaryCard[];
+  items: DashboardListItem[];
+  emptyMessage: string;
+};
+
 export type DashboardOverviewData = {
   title: string;
   description: string;
@@ -103,6 +114,7 @@ export type DashboardOverviewData = {
   leaveTrend?: LeaveTrendPoint[];
   dsrTrend?: DsrTrendPoint[];
   employeeProjectRows?: EmployeeProjectSummaryRow[];
+  executiveSections?: ExecutiveOverviewSection[];
   financeNote?: string;
 };
 
@@ -114,6 +126,8 @@ export type EmployeeDirectoryEntry = {
   joiningDate: string;
   managerId: string;
   managerName: string;
+  techStack: string[];
+  todayStatus: string;
   role: "SUPER_ADMIN" | "MANAGER" | "EMPLOYEE" | "SALES";
   status: "ACTIVE" | "SUSPENDED";
   projectIds: string[];
@@ -129,6 +143,24 @@ export type EmployeeProjectEntry = {
   priority: string;
   dueDate: string;
   assignedUserIds: string[];
+};
+
+export type SalesLeadEntry = {
+  id: string;
+  salesUserId: string;
+  salesUserName: string;
+  salesUserEmail: string;
+  clientName: string;
+  clientPhone: string;
+  clientEmail: string;
+  technologies: string[];
+  meetingLink: string;
+  meetingDate: string;
+  meetingTime: string;
+  budget: number;
+  pitchedPrice: number;
+  deliveryDate: string;
+  createdAt: string;
 };
 
 export type FileAttachmentView = {
@@ -151,9 +183,12 @@ export type DsrFeedEntry = {
 
 export type EmployeesPageData = {
   managerOptions: EmployeeOption[];
+  salesOptions: EmployeeOption[];
+  salesTechnologyOptions: string[];
   summaryCards: SummaryCard[];
   users: EmployeeDirectoryEntry[];
   projects: EmployeeProjectEntry[];
+  salesLeadRows: SalesLeadEntry[];
   recentUpdates: DsrFeedEntry[];
 };
 
@@ -299,10 +334,72 @@ export type ReportsPageData = {
   attendanceRows: AttendanceMonthlyRow[];
   leaveRows: LeaveEntry[];
   taskRows: TaskEntry[];
+  monthLabel: string;
+  monthlyEmployeeRows: EmployeeMonthlyReportRow[];
+  monthlyEmployeeReports: EmployeeMonthlyDetailReport[];
+};
+
+export type EmployeeMonthlyReportRow = {
+  id: string;
+  employeeName: string;
+  employeeEmail: string;
+  attendanceDays: number;
+  completedAttendanceDays: number;
+  leaveDays: number;
+  leaveRequests: number;
+  taskCount: number;
+  completedTaskCount: number;
+  taskTitles: string[];
+};
+
+export type EmployeeMonthlyDailyStatus = {
+  date: string;
+  attendanceStatus: string;
+  checkInAt: string;
+  checkOutAt: string;
+  projectNames: string[];
+  dsrSummary: string;
+};
+
+export type EmployeeMonthlyDsrReportRow = {
+  id: string;
+  workDate: string;
+  projectName: string;
+  summary: string;
+  accomplishments: string;
+  blockers: string;
+  nextPlan: string;
+};
+
+export type EmployeeMonthlyTaskReportRow = {
+  id: string;
+  title: string;
+  dueDate: string;
+  status: string;
+  priority: string;
+};
+
+export type EmployeeMonthlyDetailReport = {
+  id: string;
+  employeeName: string;
+  employeeEmail: string;
+  attendanceDays: number;
+  completedAttendanceDays: number;
+  leaveDays: number;
+  leaveRequests: number;
+  taskCount: number;
+  completedTaskCount: number;
+  dailyRows: EmployeeMonthlyDailyStatus[];
+  dsrRows: EmployeeMonthlyDsrReportRow[];
+  taskRows: EmployeeMonthlyTaskReportRow[];
 };
 
 export type SettingsPageData = {
+  canManageCompany: boolean;
   companyName: string;
+  currentUserEmail: string;
+  currentUserName: string;
+  currentUserRoleLabel: string;
   workStart: string;
   workEnd: string;
   leavePolicy: string;

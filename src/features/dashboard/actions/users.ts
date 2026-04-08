@@ -28,31 +28,35 @@ export async function createManagedUser(
   const joiningDate = String(formData.get("joiningDate") ?? "").trim();
   const password = String(formData.get("password") ?? "");
   const managerId = String(formData.get("managerId") ?? "").trim();
+  const techStack = formData
+    .getAll("techStack")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
   const role = String(formData.get("role") ?? "EMPLOYEE");
   const status = String(formData.get("status") ?? "ACTIVE");
   const documentFile = formData.get("document");
 
   if (fullName.length < 2 || fullName.length > 80) {
-    return { error: "Full name must be between 2 and 80 characters.", values: { fullName, email, phone, joiningDate, managerId } };
+    return { error: "Full name must be between 2 and 80 characters.", values: { fullName, email, phone, joiningDate, managerId, techStack } };
   }
 
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    return { error: "Enter a valid email address.", values: { fullName, email, phone, joiningDate, managerId } };
+    return { error: "Enter a valid email address.", values: { fullName, email, phone, joiningDate, managerId, techStack } };
   }
 
   if (phone && !/^[0-9+\-()\s]{7,20}$/.test(phone)) {
-    return { error: "Enter a valid phone number.", values: { fullName, email, phone, joiningDate, managerId } };
+    return { error: "Enter a valid phone number.", values: { fullName, email, phone, joiningDate, managerId, techStack } };
   }
 
   if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(password)) {
     return {
       error: "Password must be at least 8 characters and include upper, lower, number, and symbol.",
-      values: { fullName, email, phone, joiningDate, managerId, role: safeRole(role), status: safeStatus(status) },
+      values: { fullName, email, phone, joiningDate, managerId, techStack, role: safeRole(role), status: safeStatus(status) },
     };
   }
 
   if (!isMvpRole(role) || !USER_STATUSES.includes(status as UserStatus)) {
-    return { error: "Selected role or status is invalid.", values: { fullName, email, phone, joiningDate, managerId } };
+    return { error: "Selected role or status is invalid.", values: { fullName, email, phone, joiningDate, managerId, techStack } };
   }
 
   await connectDb();
@@ -62,7 +66,7 @@ export async function createManagedUser(
   if (existingUser) {
     return {
       error: "This email is already assigned to another account.",
-      values: { fullName, email, phone, joiningDate, managerId, role: role as UserRole, status: status as UserStatus },
+      values: { fullName, email, phone, joiningDate, managerId, techStack, role: role as UserRole, status: status as UserStatus },
     };
   }
 
@@ -71,7 +75,7 @@ export async function createManagedUser(
   if (resolvedManagerId.error) {
     return {
       error: resolvedManagerId.error,
-      values: { fullName, email, phone, joiningDate, managerId, role: role as UserRole, status: status as UserStatus },
+      values: { fullName, email, phone, joiningDate, managerId, techStack, role: role as UserRole, status: status as UserStatus },
     };
   }
 
@@ -89,6 +93,7 @@ export async function createManagedUser(
     role,
     managerId: resolvedManagerId.value,
     status,
+    techStack,
   });
 
   revalidatePath("/dashboard/employees");
@@ -163,11 +168,11 @@ function safeStatus(value: string): UserStatus {
 }
 
 function isMvpRole(value: string): value is UserRole {
-  return value === "MANAGER" || value === "EMPLOYEE";
+  return value === "MANAGER" || value === "EMPLOYEE" || value === "SALES";
 }
 
 async function resolveManagerId(managerId: string, role: UserRole, currentUserId?: string) {
-  if (role !== "EMPLOYEE") {
+  if (role !== "EMPLOYEE" && role !== "SALES") {
     return { value: "" };
   }
 

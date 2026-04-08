@@ -2,8 +2,10 @@
 
 import { revalidatePath } from "next/cache";
 import { getCurrentSession } from "@/features/auth/lib/auth-session";
+import { hashPassword, verifyPassword } from "@/features/auth/lib/password";
 import connectDb from "@/database/mongodb/connect";
 import { SettingModel } from "@/database/mongodb/models/setting";
+import { UserModel } from "@/database/mongodb/models/user";
 
 type SettingsState = {
   error?: string;
@@ -22,8 +24,8 @@ export async function updateCompanySettings(
 ): Promise<SettingsState> {
   const session = await getCurrentSession();
 
-  if (!session || session.user.role !== "MANAGER") {
-    return { error: "Only admin can update settings." };
+  if (!session || (session.user.role !== "MANAGER" && session.user.role !== "SUPER_ADMIN")) {
+    return { error: "Only leadership accounts can update company settings." };
   }
 
   const companyName = String(formData.get("companyName") ?? "").trim();
@@ -56,6 +58,84 @@ export async function updateCompanySettings(
   return {
     success: "Settings updated successfully.",
     values: { companyName, workStart, workEnd, leavePolicy },
+  };
+}
+
+type PasswordSettingsState = {
+  error?: string;
+  success?: string;
+  values?: {
+    confirmPassword?: string;
+    currentPassword?: string;
+    newPassword?: string;
+  };
+};
+
+export async function updateAccountPassword(
+  _previousState: PasswordSettingsState,
+  formData: FormData,
+): Promise<PasswordSettingsState> {
+  const session = await getCurrentSession();
+
+  if (!session) {
+    return { error: "Please sign in again to update your password." };
+  }
+
+  const currentPassword = String(formData.get("currentPassword") ?? "");
+  const newPassword = String(formData.get("newPassword") ?? "");
+  const confirmPassword = String(formData.get("confirmPassword") ?? "");
+
+  if (!newPassword || !confirmPassword) {
+    return {
+      error: "Enter new password and confirm password.",
+      values: { confirmPassword, currentPassword, newPassword },
+    };
+  }
+
+  if (newPassword !== confirmPassword) {
+    return {
+      error: "New password and confirm password do not match.",
+      values: { confirmPassword, currentPassword, newPassword },
+    };
+  }
+
+  if (!/^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/.test(newPassword)) {
+    return {
+      error: "Use 8+ characters with uppercase, lowercase, number, and special character.",
+      values: { confirmPassword, currentPassword, newPassword },
+    };
+  }
+
+  await connectDb();
+
+  if (currentPassword) {
+    const user = await UserModel.findById(session.user.id, { passwordHash: 1 }).lean();
+
+    if (!user?.passwordHash) {
+      return {
+        error: "Unable to verify the current password right now.",
+        values: { confirmPassword, currentPassword, newPassword },
+      };
+    }
+
+    const isValidCurrentPassword = await verifyPassword(currentPassword, user.passwordHash);
+
+    if (!isValidCurrentPassword) {
+      return {
+        error: "Current password is not correct.",
+        values: { confirmPassword, currentPassword, newPassword },
+      };
+    }
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+  await UserModel.findByIdAndUpdate(session.user.id, { passwordHash });
+
+  revalidatePath("/dashboard/settings");
+
+  return {
+    success: "Password updated successfully.",
+    values: { confirmPassword: "", currentPassword: "", newPassword: "" },
   };
 }
 

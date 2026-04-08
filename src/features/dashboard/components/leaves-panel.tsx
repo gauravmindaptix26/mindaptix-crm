@@ -28,14 +28,22 @@ export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
   const [state, formAction, pending] = useActionState(applyLeaveRequest, INITIAL_LEAVE_STATE);
   const pendingReviewCount = data.leaves.filter((leave) => leave.status === "PENDING").length;
   const showApplyForm = canApply;
+  const isLeadershipReviewView = !canApply;
+  const displayedLeaves = [...data.leaves].sort((left, right) => {
+    const leftPriority = left.status === "PENDING" ? 0 : left.status === "APPROVED" ? 1 : 2;
+    const rightPriority = right.status === "PENDING" ? 0 : right.status === "APPROVED" ? 1 : 2;
+    return leftPriority - rightPriority || left.startDate.localeCompare(right.startDate);
+  });
 
   return (
     <div className="space-y-6 overflow-x-hidden px-5 py-5 sm:px-7 sm:py-6">
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {data.summaryCards.map((card) => (
-          <OverviewCard detail={card.detail} key={card.label} label={card.label} value={card.value} />
-        ))}
-      </section>
+      {!isLeadershipReviewView ? (
+        <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          {data.summaryCards.map((card) => (
+            <OverviewCard detail={card.detail} key={card.label} label={card.label} value={card.value} />
+          ))}
+        </section>
+      ) : null}
 
       <section className={`grid gap-6 ${showApplyForm ? "xl:grid-cols-[420px_minmax(0,1fr)]" : ""}`}>
         {showApplyForm ? (
@@ -77,17 +85,19 @@ export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
 
         <PanelSection
           description={
-            canReview
+            isLeadershipReviewView
+              ? "Approve or reject employee leave requests from one place."
+              : canReview
               ? "Review employee leave requests, track used leave days, and approve or reject pending requests from one place."
               : !canApply
                 ? "Read-only company leave history showing requested dates, current status, and employee leave usage."
-              : "Complete leave history for your account, including pending, approved, and rejected requests."
+                : "Complete leave history for your account, including pending, approved, and rejected requests."
           }
           eyebrow="Leave History"
-          title={canReview ? "Review Requests" : canApply ? "Requests" : "Leave History"}
+          title={isLeadershipReviewView ? "Employee Leave Requests" : canReview ? "Review Requests" : canApply ? "Requests" : "Leave History"}
         >
           <div className="mt-6 max-w-full">
-            {canReview ? (
+            {canReview && !isLeadershipReviewView ? (
               <div className="mb-6 max-w-full overflow-hidden rounded-[1.75rem] border border-amber-200/80 bg-[linear-gradient(135deg,#fff7db_0%,#fffdf3_58%,#ffffff_100%)] shadow-[0_20px_45px_rgba(245,158,11,0.14)]">
                 <div className="grid gap-4 px-5 py-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] xl:items-center">
                   <div>
@@ -109,7 +119,7 @@ export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
               </div>
             ) : null}
 
-            {canReview && data.employeeSummaries.length ? (
+            {canReview && data.employeeSummaries.length && !isLeadershipReviewView ? (
               <div className="mb-6 max-w-full">
                 <div className="mb-4 flex flex-col gap-3">
                   <div>
@@ -171,8 +181,8 @@ export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
             ) : null}
 
             <div className={`grid gap-4 ${canReview ? "xl:grid-cols-2" : "grid-cols-1"}`}>
-              {data.leaves.length ? (
-                data.leaves.map((leave) => (
+              {displayedLeaves.length ? (
+                displayedLeaves.map((leave) => (
                   <LeaveRequestCard canReview={canReview} key={leave.id} leave={leave} />
                 ))
               ) : (

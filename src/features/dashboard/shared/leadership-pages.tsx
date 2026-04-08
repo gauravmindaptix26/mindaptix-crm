@@ -31,6 +31,9 @@ export async function renderLeadershipDashboardPage(page: DashboardPageKey, sess
           projects={data.projects}
           readOnly={isReadOnlySuperAdmin}
           recentUpdates={data.recentUpdates}
+          salesLeadRows={data.salesLeadRows}
+          salesOptions={data.salesOptions}
+          salesTechnologyOptions={data.salesTechnologyOptions}
           summaryCards={data.summaryCards}
           users={data.users}
         />
@@ -42,7 +45,7 @@ export async function renderLeadershipDashboardPage(page: DashboardPageKey, sess
     }
     case "leaves": {
       const data = await getLeavesPageData(session);
-      return <LeavesPanel canApply={false} canReview={!isReadOnlySuperAdmin} data={data} />;
+      return <LeavesPanel canApply={false} canReview data={data} />;
     }
     case "tasks": {
       const data = await getTasksPageData(session);
@@ -50,14 +53,14 @@ export async function renderLeadershipDashboardPage(page: DashboardPageKey, sess
     }
     case "dsr": {
       const data = await getDsrPageData(session);
-      return <DsrPanel data={data} />;
+      return <DsrPanel data={data} simplifiedReview={isReadOnlySuperAdmin} />;
     }
     case "reports": {
       const data = await getReportsPageData(session);
-      return <ReportsPanel data={data} />;
+      return <ReportsPanel data={data} simplifiedView={isReadOnlySuperAdmin} />;
     }
     case "settings": {
-      const data = await getSettingsPageData();
+      const data = await getSettingsPageData(session);
       return <SettingsPanel data={data} />;
     }
     default:

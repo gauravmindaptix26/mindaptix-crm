@@ -69,6 +69,10 @@ const userSchema = new mongoose.Schema(
       type: [String],
       default: [],
     },
+    techStack: {
+      type: [String],
+      default: [],
+    },
     leadIds: {
       type: [String],
       default: [],

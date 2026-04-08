@@ -10,6 +10,7 @@ import type { DsrPageData, EmployeeProjectView } from "@/features/dashboard/type
 
 type DsrPanelProps = {
   data: DsrPageData;
+  simplifiedReview?: boolean;
 };
 
 const INITIAL_DSR_STATE = {
@@ -19,12 +20,12 @@ const INITIAL_DSR_STATE = {
   },
 };
 
-export function DsrPanel({ data }: DsrPanelProps) {
+export function DsrPanel({ data, simplifiedReview = false }: DsrPanelProps) {
   if (data.mode === "employee") {
     return <EmployeeDsrPanel data={data} />;
   }
 
-  return <DsrReviewPanel data={data} />;
+  return <DsrReviewPanel data={data} simplifiedReview={simplifiedReview} />;
 }
 
 function EmployeeDsrPanel({ data }: { data: Extract<DsrPageData, { mode: "employee" }> }) {
@@ -135,7 +136,92 @@ function EmployeeDsrPanel({ data }: { data: Extract<DsrPageData, { mode: "employ
   );
 }
 
-function DsrReviewPanel({ data }: { data: Extract<DsrPageData, { mode: "review" }> }) {
+function DsrReviewPanel({
+  data,
+  simplifiedReview,
+}: {
+  data: Extract<DsrPageData, { mode: "review" }>;
+  simplifiedReview: boolean;
+}) {
+  const submittedEmployees = dedupeSubmittedEmployees(data.updates);
+
+  if (simplifiedReview) {
+    return (
+      <div className="space-y-6 px-5 py-5 sm:px-7 sm:py-6">
+        <section className="grid gap-4 md:grid-cols-2">
+          <OverviewCard detail="Employees who already submitted DSR today." label="Submitted Today" value={String(submittedEmployees.length)} />
+          <OverviewCard detail="Employees still missing their DSR for today." label="Missing Today" value={String(data.missingEmployees.length)} />
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-2">
+          <PanelSection
+            description="Employees who have already filled today’s DSR."
+            eyebrow="Submitted Today"
+            title="Filled DSR"
+          >
+            <div className="mt-6 space-y-3">
+              {submittedEmployees.length ? (
+                submittedEmployees.map((employee) => (
+                  <article
+                    className="flex items-center gap-4 rounded-[1.5rem] border border-emerald-100 bg-[linear-gradient(135deg,#ecfdf5_0%,#ffffff_100%)] px-4 py-4 shadow-[0_12px_28px_rgba(16,185,129,0.08)]"
+                    key={employee.id}
+                  >
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-semibold uppercase tracking-[0.18em] text-white">
+                      {getInitials(employee.employeeName)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-base font-semibold text-slate-950">{employee.employeeName}</p>
+                      <p className="mt-1 truncate text-sm text-slate-500">{employee.employeeEmail}</p>
+                    </div>
+                    <div className="ml-auto rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
+                      Submitted
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 px-5 py-4 text-sm leading-6 text-slate-500">
+                  No employee has submitted DSR today yet.
+                </div>
+              )}
+            </div>
+          </PanelSection>
+
+          <PanelSection
+            description="Employees who still need to fill today’s DSR."
+            eyebrow="Missing Today"
+            title="Pending DSR"
+          >
+            <div className="mt-6 space-y-3">
+              {data.missingEmployees.length ? (
+                data.missingEmployees.map((employee) => (
+                  <article
+                    className="flex items-center gap-4 rounded-[1.5rem] border border-amber-100 bg-[linear-gradient(135deg,#fff7ed_0%,#ffffff_100%)] px-4 py-4 shadow-[0_12px_28px_rgba(245,158,11,0.08)]"
+                    key={employee.id}
+                  >
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-sm font-semibold uppercase tracking-[0.18em] text-white">
+                      {getInitials(employee.employeeName)}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate text-base font-semibold text-slate-950">{employee.employeeName}</p>
+                      <p className="mt-1 truncate text-sm text-slate-500">{employee.employeeEmail}</p>
+                    </div>
+                    <div className="ml-auto rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+                      Pending
+                    </div>
+                  </article>
+                ))
+              ) : (
+                <div className="rounded-[1.5rem] border border-dashed border-emerald-200 bg-emerald-50 px-5 py-4 text-sm leading-6 text-emerald-700">
+                  Everyone in this view has already submitted DSR today.
+                </div>
+              )}
+            </div>
+          </PanelSection>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 px-5 py-5 sm:px-7 sm:py-6">
       <section className="grid gap-4 md:grid-cols-3">
@@ -237,6 +323,19 @@ function DsrReviewPanel({ data }: { data: Extract<DsrPageData, { mode: "review" 
       </section>
     </div>
   );
+}
+
+function dedupeSubmittedEmployees(updates: Extract<DsrPageData, { mode: "review" }>["updates"]) {
+  const seen = new Set<string>();
+
+  return updates.filter((update) => {
+    if (seen.has(update.employeeEmail)) {
+      return false;
+    }
+
+    seen.add(update.employeeEmail);
+    return true;
+  });
 }
 
 function OverviewCard({ detail, label, value }: { detail: string; label: string; value: string }) {

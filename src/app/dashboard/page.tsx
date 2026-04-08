@@ -30,13 +30,13 @@ export default async function DashboardPage() {
       attendanceTrend={overview.attendanceTrend}
       calendarItems={overview.calendarItems}
       calendarTitle={overview.calendarTitle}
-      cards={overview.cards}
       description={overview.description}
       directoryEmptyMessage={overview.directoryEmptyMessage}
       directoryItems={overview.directoryItems}
       directoryTitle={overview.directoryTitle}
       dsrTrend={overview.dsrTrend}
       employeeProjectRows={overview.employeeProjectRows}
+      executiveSections={overview.executiveSections}
       financeNote={overview.financeNote}
       leaveTrend={overview.leaveTrend}
       notificationTitle={overview.notificationTitle}

@@ -10,6 +10,7 @@ export type UserManagementFormState = {
     phone?: string;
     joiningDate?: string;
     managerId?: string;
+    techStack?: string[];
     role?: UserRole;
     status?: UserStatus;
   };

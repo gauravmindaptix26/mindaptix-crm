@@ -53,6 +53,7 @@ export function DashboardShell({ children, session }: DashboardShellProps) {
           <nav className="mt-4 flex-1 space-y-2">
             {navItems.map((item) => {
               const active = isItemActive(activePathname, item);
+              const itemLabel = session.user.role === "SALES" && item.key === "employees" ? "Leads" : item.label;
 
               return (
                 <Link
@@ -75,7 +76,7 @@ export function DashboardShell({ children, session }: DashboardShellProps) {
                     {getMenuIcon(item.key)}
                   </span>
                   <span className={`truncate text-[0.98rem] font-semibold ${active ? "text-slate-900" : "text-slate-100"}`}>
-                    {item.label}
+                    {itemLabel}
                   </span>
                 </Link>
               );

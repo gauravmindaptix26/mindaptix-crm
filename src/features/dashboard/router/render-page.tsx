@@ -4,6 +4,7 @@ import type { DashboardPageKey } from "@/features/dashboard/shared/page-types";
 import { renderAdminDashboardPage } from "@/features/dashboard/roles/admin/pages";
 import { renderEmployeeDashboardPage } from "@/features/dashboard/roles/employee/pages";
 import { renderManagerDashboardPage } from "@/features/dashboard/roles/manager/pages";
+import { renderSalesDashboardPage } from "@/features/dashboard/roles/sales/pages";
 import { getDashboardNavItemsForRole, getDefaultDashboardHrefForRole } from "@/features/dashboard/config";
 import { getCurrentSession } from "@/features/auth/lib/auth-session";
 
@@ -27,6 +28,8 @@ export async function renderDashboardRoute(page: DashboardPageKey) {
       return renderManagerDashboardPage(page, session);
     case "EMPLOYEE":
       return renderEmployeeDashboardPage(page, session);
+    case "SALES":
+      return renderSalesDashboardPage(page, session);
     default:
       notFound();
   }
