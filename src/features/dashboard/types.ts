@@ -228,6 +228,7 @@ export type LeaveEntry = {
   requestedDays: number;
   reason: string;
   status: string;
+  updatedAt: string;
 };
 
 export type LeaveEmployeeSummary = {

@@ -558,7 +558,7 @@ export async function getLeavesPageData(session: AuthenticatedSession): Promise<
       : { userId: inScope(session.user.role === "MANAGER" ? visibleUserIds : [session.user.id]) };
 
   const [leaves, users] = await Promise.all([
-    LeaveRequestModel.find(leaveFilter).sort({ createdAt: -1 }).lean(),
+    LeaveRequestModel.find(leaveFilter).sort({ updatedAt: -1, createdAt: -1 }).lean(),
     UserModel.find({}, { fullName: 1, email: 1 }).lean(),
   ]);
 
@@ -611,6 +611,7 @@ export async function getLeavesPageData(session: AuthenticatedSession): Promise<
       requestedDays: getDateRangeDays(leave.startDate, leave.endDate),
       reason: leave.reason,
       status: leave.status,
+      updatedAt: formatDateTime(leave.updatedAt),
     })),
     employeeSummaries: Array.from(employeeSummaryMap.values()).sort(
       (left, right) =>
@@ -1024,6 +1025,7 @@ export async function getReportsPageData(session: AuthenticatedSession): Promise
         requestedDays: getDateRangeDays(leave.startDate, leave.endDate),
           reason: leave.reason,
           status: leave.status,
+          updatedAt: formatDateTime(leave.updatedAt),
         })),
     taskRows: tasks.map((task) => mapTaskRow(task, new Map(users.map((user) => [user._id.toString(), user.fullName])))),
     monthLabel: formatMonthYearLabel(currentMonthKey),

@@ -31,11 +31,7 @@ export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
   const pendingReviewCount = data.leaves.filter((leave) => leave.status === "PENDING").length;
   const showApplyForm = canApply;
   const isLeadershipReviewView = !canApply;
-  const displayedLeaves = [...data.leaves].sort((left, right) => {
-    const leftPriority = left.status === "PENDING" ? 0 : left.status === "APPROVED" ? 1 : 2;
-    const rightPriority = right.status === "PENDING" ? 0 : right.status === "APPROVED" ? 1 : 2;
-    return leftPriority - rightPriority || left.startDate.localeCompare(right.startDate);
-  });
+  const displayedLeaves = [...data.leaves];
   const refreshLeavesView = useEffectEvent(() => {
     if (typeof document !== "undefined" && document.visibilityState !== "visible") {
       return;
