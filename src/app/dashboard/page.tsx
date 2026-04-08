@@ -1,4 +1,5 @@
 import { AdminDashboardOverview } from "@/features/dashboard/components/admin-dashboard-overview";
+import { EmployeeDashboardOverview } from "@/features/dashboard/components/employee-dashboard-overview";
 import { getCurrentSession } from "@/features/auth/lib/auth-session";
 import { getAdminDashboardOverview } from "@/features/dashboard/roles/admin/overview";
 import { getEmployeeDashboardOverview } from "@/features/dashboard/roles/employee/overview";
@@ -18,6 +19,10 @@ export default async function DashboardPage() {
       : session.user.role === "MANAGER"
         ? await getManagerDashboardOverview(session)
         : await getEmployeeDashboardOverview(session);
+
+  if (session.user.role === "EMPLOYEE") {
+    return <EmployeeDashboardOverview overview={overview} roleBadge={getDisplayRoleLabel(session.user.role)} />;
+  }
 
   return (
     <AdminDashboardOverview
