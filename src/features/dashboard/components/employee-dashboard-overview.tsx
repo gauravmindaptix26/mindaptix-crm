@@ -19,25 +19,23 @@ export function EmployeeDashboardOverview({ overview, roleBadge }: EmployeeDashb
   return (
     <div className="space-y-6 px-5 pb-5 pt-1 sm:px-7 sm:pb-6">
       <section className="overflow-hidden rounded-[2.2rem] border border-slate-200/80 bg-[linear-gradient(135deg,#eff6ff_0%,#ffffff_48%,#f8fafc_100%)] p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
-        <div className="grid gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.8fr)] xl:items-end">
-          <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <p className="text-xs font-semibold uppercase tracking-[0.3em] text-blue-600">Dashboard</p>
-              {roleBadge ? (
-                <span className="rounded-full border border-blue-200 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-blue-700">
-                  {roleBadge}
-                </span>
-              ) : null}
-            </div>
-            <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">{overview.title}</h1>
-            <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">{overview.description}</p>
+        <div>
+          <div className="flex flex-wrap items-center gap-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-blue-600">Dashboard</p>
+            {roleBadge ? (
+              <span className="rounded-full border border-blue-200 bg-white/80 px-4 py-2 text-xs font-semibold uppercase tracking-[0.22em] text-blue-700">
+                {roleBadge}
+              </span>
+            ) : null}
           </div>
+          <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">{overview.title}</h1>
+          <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">{overview.description}</p>
+        </div>
 
-          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-            {overview.cards.slice(0, 3).map((card, index) => (
-              <HeroMetricCard accent={index} card={card} key={card.label} />
-            ))}
-          </div>
+        <div className="mt-6 grid gap-3 md:grid-cols-3">
+          {overview.cards.slice(0, 3).map((card, index) => (
+            <HeroMetricCard accent={index} card={card} key={card.label} />
+          ))}
         </div>
       </section>
 
