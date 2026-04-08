@@ -84,50 +84,55 @@ export async function applyLeaveRequest(_previousState: LeaveState, formData: Fo
 }
 
 export async function reviewLeaveRequest(formData: FormData) {
-  const session = await getCurrentSession();
+  try {
+    const session = await getCurrentSession();
 
-  if (!session || session.user.role !== "MANAGER") {
-    throw new Error("Only admin can review leaves.");
+    if (!session || (session.user.role !== "MANAGER" && session.user.role !== "SUPER_ADMIN")) {
+      return;
+    }
+
+    const leaveId = String(formData.get("leaveId") ?? "");
+    const status = String(formData.get("status") ?? "");
+
+    if (!leaveId || !LEAVE_STATUSES.includes(status as LeaveStatus) || status === "PENDING") {
+      return;
+    }
+
+    await connectDb();
+
+    const leaveRequest = await LeaveRequestModel.findById(leaveId, { userId: 1 }).lean();
+
+    if (!leaveRequest?.userId) {
+      return;
+    }
+
+    const reviewUserId = String(leaveRequest.userId);
+    const visibleUserIds = await getVisibleUserIdsForSession(session, { employeesOnly: true });
+
+    if (!visibleUserIds.includes(reviewUserId)) {
+      return;
+    }
+
+    await LeaveRequestModel.findByIdAndUpdate(leaveId, {
+      status,
+      reviewedByUserId: session.user.id,
+    });
+
+    await createNotificationsForUsers([reviewUserId], {
+      actorUserId: session.user.id,
+      type: "LEAVE_REVIEWED",
+      title: `Leave ${status === "APPROVED" ? "approved" : "rejected"}`,
+      message: `Your leave request has been ${status.toLowerCase()} by ${session.user.fullName}.`,
+      actionUrl: "/dashboard/leaves",
+      sourceKey: `leave-reviewed:${leaveId}:${status}`,
+    });
+
+    revalidatePath("/dashboard/leaves");
+    revalidatePath("/dashboard/reports");
+    revalidatePath("/dashboard");
+  } catch (error) {
+    console.error("reviewLeaveRequest failed", error);
   }
-
-  const leaveId = String(formData.get("leaveId") ?? "");
-  const status = String(formData.get("status") ?? "");
-
-  if (!leaveId || !LEAVE_STATUSES.includes(status as LeaveStatus) || status === "PENDING") {
-    throw new Error("Invalid leave review request.");
-  }
-
-  await connectDb();
-
-  const leaveRequest = await LeaveRequestModel.findById(leaveId, { userId: 1 }).lean();
-
-  if (!leaveRequest) {
-    throw new Error("Leave request not found.");
-  }
-
-  const visibleUserIds = await getVisibleUserIdsForSession(session, { employeesOnly: true });
-
-  if (!visibleUserIds.includes(leaveRequest.userId)) {
-    throw new Error("You can only review leave requests from employee accounts.");
-  }
-
-  await LeaveRequestModel.findByIdAndUpdate(leaveId, {
-    status,
-    reviewedByUserId: session.user.id,
-  });
-
-  await createNotificationsForUsers([leaveRequest.userId], {
-    actorUserId: session.user.id,
-    type: "LEAVE_REVIEWED",
-    title: `Leave ${status === "APPROVED" ? "approved" : "rejected"}`,
-    message: `Your leave request has been ${status.toLowerCase()} by ${session.user.fullName}.`,
-    actionUrl: "/dashboard/leaves",
-    sourceKey: `leave-reviewed:${leaveId}:${status}`,
-  });
-
-  revalidatePath("/dashboard/leaves");
-  revalidatePath("/dashboard/reports");
-  revalidatePath("/dashboard");
 }
 
 function isValidDateKey(value: string) {
