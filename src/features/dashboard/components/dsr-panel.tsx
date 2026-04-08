@@ -152,61 +152,86 @@ function DsrReviewPanel({ data }: { data: Extract<DsrPageData, { mode: "review" 
           eyebrow="Missing Today"
           title="Pending DSR"
         >
-          <div className="mt-6">
-            <DashboardTable
-              columns={[{ label: "Employee" }, { label: "Email" }]}
-              emptyMessage="Everyone in this view has already submitted DSR today."
-              hasRows={data.missingEmployees.length > 0}
-            >
-              {data.missingEmployees.map((employee) => (
-                <tr key={employee.id}>
-                  <DashboardTableCell className="font-semibold text-slate-900">{employee.employeeName}</DashboardTableCell>
-                  <DashboardTableCell>{employee.employeeEmail}</DashboardTableCell>
-                </tr>
-              ))}
-            </DashboardTable>
+          <div className="mt-6 space-y-3">
+            {data.missingEmployees.length ? (
+              data.missingEmployees.map((employee) => (
+                <article
+                  className="flex items-center gap-4 rounded-[1.4rem] border border-slate-100 bg-slate-50 px-4 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)]"
+                  key={employee.id}
+                >
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-100 via-orange-50 to-white text-sm font-semibold uppercase tracking-[0.18em] text-amber-700">
+                    {getInitials(employee.employeeName)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-base font-semibold text-slate-950">{employee.employeeName}</p>
+                    <p className="mt-1 truncate text-sm text-slate-500">{employee.employeeEmail}</p>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="rounded-[1.5rem] border border-dashed border-emerald-200 bg-emerald-50 px-5 py-4 text-sm leading-6 text-emerald-700">
+                Everyone in this view has already submitted DSR today.
+              </div>
+            )}
           </div>
         </PanelSection>
 
         <PanelSection
-          description="Latest employee reports with completed work, blockers, next plan, and uploaded proof."
+          description="Today's submitted employee reports with completed work, blockers, next plan, and uploaded proof."
           eyebrow="Review Feed"
-          title="Submitted DSR"
+          title="Submitted Today"
         >
-          <div className="mt-6">
-            <DashboardTable
-              columns={[
-                { label: "Employee" },
-                { label: "Date" },
-                { label: "Project" },
-                { label: "Summary" },
-                { label: "Completed Work" },
-                { label: "Blockers / Next" },
-                { label: "Files" },
-              ]}
-              emptyMessage="No DSR entries available yet."
-              hasRows={data.updates.length > 0}
-            >
-              {data.updates.map((update) => (
-                <tr key={update.id}>
-                  <DashboardTableCell>
-                    <p className="font-semibold text-slate-900">{update.employeeName}</p>
-                    <p className="mt-1 text-xs text-slate-500">{update.employeeEmail}</p>
-                  </DashboardTableCell>
-                  <DashboardTableCell>{update.workDate}</DashboardTableCell>
-                  <DashboardTableCell>{update.projectName}</DashboardTableCell>
-                  <DashboardTableCell className="font-semibold text-slate-900">{update.summary}</DashboardTableCell>
-                  <DashboardTableCell className="min-w-[220px]">{update.accomplishments}</DashboardTableCell>
-                  <DashboardTableCell className="min-w-[220px]">
-                    <p>{update.blockers || "No blockers"}</p>
-                    <p className="mt-2 text-xs text-slate-500">Next: {update.nextPlan || "Not added"}</p>
-                  </DashboardTableCell>
-                  <DashboardTableCell>
-                    {update.attachments.length ? <AttachmentList items={update.attachments} /> : <span className="text-sm text-slate-400">No files</span>}
-                  </DashboardTableCell>
-                </tr>
-              ))}
-            </DashboardTable>
+          <div className="mt-6 space-y-4">
+            {data.updates.length ? (
+              data.updates.map((update) => (
+                <article
+                  className="rounded-[1.6rem] border border-slate-100 bg-gradient-to-br from-white via-slate-50/70 to-blue-50/40 p-5 shadow-[0_18px_35px_rgba(15,23,42,0.05)]"
+                  key={update.id}
+                >
+                  <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 lg:flex-row lg:items-start lg:justify-between">
+                    <div className="flex min-w-0 items-center gap-4">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.2rem] bg-gradient-to-br from-slate-900 to-blue-600 text-base font-semibold uppercase tracking-[0.16em] text-white">
+                        {getInitials(update.employeeName)}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="truncate text-lg font-semibold text-slate-950">{update.employeeName}</p>
+                        <p className="mt-1 truncate text-sm text-slate-500">{update.employeeEmail}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      <Badge tone="blue">{update.projectName}</Badge>
+                      <Badge tone="emerald">{update.workDate}</Badge>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+                    <div className="space-y-4">
+                      <InfoCard label="Summary">{update.summary}</InfoCard>
+                      <InfoCard label="Completed Work">{update.accomplishments}</InfoCard>
+                    </div>
+                    <div className="space-y-4">
+                      <InfoCard label="Blockers">{update.blockers || "No blockers reported."}</InfoCard>
+                      <InfoCard label="Next Plan">{update.nextPlan || "Next plan not added."}</InfoCard>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 rounded-[1.25rem] border border-slate-100 bg-white/80 px-4 py-4">
+                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Proof Files</p>
+                    <div className="mt-3">
+                      {update.attachments.length ? (
+                        <AttachmentList items={update.attachments} />
+                      ) : (
+                        <span className="text-sm text-slate-400">No files attached.</span>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))
+            ) : (
+              <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 px-5 py-4 text-sm leading-6 text-slate-500">
+                No employee has submitted DSR today yet.
+              </div>
+            )}
           </div>
         </PanelSection>
       </section>
@@ -268,6 +293,15 @@ function Badge({ children, tone }: { children: ReactNode; tone: "amber" | "blue"
   };
 
   return <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${styles[tone]}`}>{children}</span>;
+}
+
+function InfoCard({ children, label }: { children: ReactNode; label: string }) {
+  return (
+    <div className="rounded-[1.25rem] border border-slate-100 bg-white/80 px-4 py-4">
+      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-slate-400">{label}</p>
+      <div className="mt-3 text-sm leading-6 text-slate-700">{children}</div>
+    </div>
+  );
 }
 
 function AttachmentList({ items }: { items: Array<{ name: string; url: string }> }) {
@@ -386,6 +420,16 @@ function formatLabel(value: string) {
     .split("_")
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
+}
+
+function getInitials(value: string) {
+  return value
+    .split(" ")
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part.charAt(0))
+    .join("")
+    .toUpperCase();
 }
 
 

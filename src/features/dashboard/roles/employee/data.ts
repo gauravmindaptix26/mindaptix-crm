@@ -16,6 +16,7 @@ import {
 
 export async function getEmployeeDashboardOverviewData(session: AuthenticatedSession): Promise<DashboardOverviewData> {
   const { notifications, today } = await getDashboardOverviewContext(session);
+  const currentTime = getCurrentTimeKey();
   const [attendanceRow, pendingLeaves, openTasks, projectCount, dsrCount, taskRows] = await Promise.all([
     AttendanceModel.findOne({ userId: session.user.id, dateKey: today }).lean(),
     LeaveRequestModel.countDocuments({ userId: session.user.id, status: "PENDING" }),
@@ -28,6 +29,15 @@ export async function getEmployeeDashboardOverviewData(session: AuthenticatedSes
   return {
     title: "Employee Dashboard",
     description: "Personal workflow view for attendance, assigned tasks, DSR discipline, and upcoming work.",
+    priorityAlert:
+      !dsrCount && currentTime >= "19:00"
+        ? {
+            title: "DSR pending after 7 PM",
+            detail: "Aaj ka DSR abhi submit nahi hua hai. Day close se pehle isse complete karo.",
+            actionLabel: "Open DSR",
+            actionUrl: "/dashboard/dsr",
+          }
+        : undefined,
     cards: [
       { label: "Attendance", value: attendanceRow ? formatLabel(attendanceRow.status) : "Not Marked", detail: "Your current attendance status for today." },
       { label: "Pending Leaves", value: String(pendingLeaves), detail: "Your leave requests waiting for review." },
@@ -69,6 +79,10 @@ export async function getEmployeeDashboardOverviewData(session: AuthenticatedSes
       { id: "leave", title: "Apply Leave", meta: "As needed", description: "Use the Leaves page for sick or paid leave requests." },
     ],
   };
+}
+
+function getCurrentTimeKey() {
+  return new Date().toISOString().slice(11, 16);
 }
 
 

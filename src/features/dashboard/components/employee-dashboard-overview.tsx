@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
 import type {
   CalendarEventItem,
   DashboardListItem,
@@ -16,8 +17,20 @@ type EmployeeDashboardOverviewProps = {
 };
 
 export function EmployeeDashboardOverview({ overview, roleBadge }: EmployeeDashboardOverviewProps) {
+  const [isPriorityAlertOpen, setIsPriorityAlertOpen] = useState(Boolean(overview.priorityAlert));
+
   return (
     <div className="space-y-6 px-5 pb-5 pt-1 sm:px-7 sm:pb-6">
+      {overview.priorityAlert && isPriorityAlertOpen ? (
+        <DsrPriorityAlert
+          actionLabel={overview.priorityAlert.actionLabel}
+          actionUrl={overview.priorityAlert.actionUrl}
+          detail={overview.priorityAlert.detail}
+          onClose={() => setIsPriorityAlertOpen(false)}
+          title={overview.priorityAlert.title}
+        />
+      ) : null}
+
       <section className="overflow-hidden rounded-[2.2rem] border border-slate-200/80 bg-[linear-gradient(135deg,#eff6ff_0%,#ffffff_48%,#f8fafc_100%)] p-6 shadow-[0_18px_50px_rgba(15,23,42,0.06)]">
         <div>
           <div className="flex flex-wrap items-center gap-3">
@@ -370,6 +383,52 @@ function EmptyState({ message }: { message: string }) {
   return <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">{message}</div>;
 }
 
+function DsrPriorityAlert({
+  actionLabel,
+  actionUrl,
+  detail,
+  onClose,
+  title,
+}: {
+  actionLabel: string;
+  actionUrl: string;
+  detail: string;
+  onClose: () => void;
+  title: string;
+}) {
+  return (
+    <div className="fixed inset-x-4 bottom-4 z-50 sm:left-auto sm:right-6 sm:top-6 sm:bottom-auto sm:w-full sm:max-w-md">
+      <div className="rounded-[1.8rem] border border-red-200 bg-[linear-gradient(135deg,#fff1f2_0%,#ffffff_45%,#fef2f2_100%)] p-5 shadow-[0_24px_60px_rgba(220,38,38,0.18)] backdrop-blur">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[1rem] bg-red-600 text-white shadow-[0_14px_30px_rgba(220,38,38,0.28)]">
+            <AlertIcon />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-red-600">DSR Alert</p>
+            <h2 className="mt-2 text-[1.2rem] font-semibold tracking-tight text-slate-950">{title}</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-600">{detail}</p>
+            <div className="mt-4 flex flex-wrap gap-3">
+              <Link
+                className="rounded-full bg-red-600 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white transition hover:bg-red-700"
+                href={actionUrl}
+              >
+                {actionLabel}
+              </Link>
+              <button
+                className="rounded-full border border-red-200 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-red-600 transition hover:bg-red-50"
+                onClick={onClose}
+                type="button"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function TaskQueueIcon() {
   return (
     <svg aria-hidden="true" fill="none" height="24" viewBox="0 0 24 24" width="24">
@@ -377,6 +436,21 @@ function TaskQueueIcon() {
       <path d="M9 7V5.6A1.6 1.6 0 0 1 10.6 4h2.8A1.6 1.6 0 0 1 15 5.6V7" stroke="currentColor" strokeWidth="1.7" />
       <path d="M4 12.5h16" stroke="currentColor" strokeWidth="1.7" />
       <path d="M10.5 12.5v2h3v-2" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
+function AlertIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="22" viewBox="0 0 24 24" width="22">
+      <path d="M12 7.5v5.5" stroke="currentColor" strokeLinecap="round" strokeWidth="1.8" />
+      <circle cx="12" cy="16.9" fill="currentColor" r="1" />
+      <path
+        d="M10.29 4.86 3.82 16.03A2 2 0 0 0 5.55 19h12.9a2 2 0 0 0 1.73-2.97L13.71 4.86a2 2 0 0 0-3.42 0Z"
+        stroke="currentColor"
+        strokeLinejoin="round"
+        strokeWidth="1.8"
+      />
     </svg>
   );
 }

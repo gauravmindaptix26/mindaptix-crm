@@ -86,6 +86,12 @@ export type DashboardOverviewData = {
   title: string;
   description: string;
   cards: SummaryCard[];
+  priorityAlert?: {
+    title: string;
+    detail: string;
+    actionLabel: string;
+    actionUrl: string;
+  };
   notificationTitle?: string;
   notifications?: DashboardNotificationItem[];
   weeklySummaryTitle?: string;
@@ -888,14 +894,15 @@ export async function getDsrPageData(session: AuthenticatedSession): Promise<Dsr
       : await getVisibleUserIdsForSession(session, { employeesOnly: true });
   const scope = inScope(visibleEmployeeIds);
   const [updates, users, projects] = await Promise.all([
-    DailyUpdateModel.find({ userId: scope }).sort({ createdAt: -1 }).limit(15).lean(),
+    DailyUpdateModel.find({ userId: scope, workDate: today }).sort({ createdAt: -1 }).limit(20).lean(),
     UserModel.find({ _id: scope }, { fullName: 1, email: 1, status: 1 }).lean(),
     ProjectModel.find({}, { name: 1 }).lean(),
   ]);
 
   const userMap = new Map(users.map((user) => [user._id.toString(), user]));
   const projectMap = new Map(projects.map((project) => [project._id.toString(), project.name]));
-  const submittedTodayIds = new Set(updates.filter((update) => update.workDate === today).map((update) => update.userId));
+  const activeUsers = users.filter((user) => user.status === "ACTIVE");
+  const submittedTodayIds = new Set(updates.map((update) => update.userId));
   const missingEmployees = users
     .filter((user) => user.status === "ACTIVE" && !submittedTodayIds.has(user._id.toString()))
     .map((user) => ({
@@ -909,7 +916,7 @@ export async function getDsrPageData(session: AuthenticatedSession): Promise<Dsr
     summaryCards: [
       { label: "Submitted Today", value: String(submittedTodayIds.size), detail: "Employees who submitted DSR today." },
       { label: "Missing Today", value: String(missingEmployees.length), detail: "Employees still missing a DSR entry today." },
-      { label: "Recent Entries", value: String(updates.length), detail: "Latest DSR rows visible in this review scope." },
+      { label: "Review Scope", value: String(activeUsers.length), detail: "Active employees visible in this DSR review scope." },
     ],
     updates: updates.map((update) => ({
       id: update._id.toString(),
