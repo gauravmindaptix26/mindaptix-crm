@@ -28,8 +28,8 @@ export function EmployeeDashboardOverview({ overview, roleBadge }: EmployeeDashb
               </span>
             ) : null}
           </div>
-          <h1 className="mt-4 max-w-3xl text-4xl font-semibold tracking-tight text-slate-950 sm:text-5xl">{overview.title}</h1>
-          <p className="mt-4 max-w-3xl text-base leading-8 text-slate-600">{overview.description}</p>
+          <h1 className="mt-4 max-w-3xl text-3xl font-semibold tracking-tight text-slate-950 sm:text-[3.35rem]">{overview.title}</h1>
+          <p className="mt-4 max-w-3xl text-[0.96rem] leading-7 text-slate-600">{overview.description}</p>
         </div>
 
         <div className="mt-6 grid gap-3 md:grid-cols-3">
@@ -74,8 +74,8 @@ function HeroMetricCard({ accent, card }: { accent: number; card: SummaryCard })
   return (
     <article className={`rounded-[1.5rem] border p-4 shadow-[0_10px_25px_rgba(15,23,42,0.04)] ${accentClassName}`}>
       <p className="text-[0.68rem] font-semibold uppercase tracking-[0.24em] opacity-80">{card.label}</p>
-      <p className="mt-3 text-2xl font-semibold leading-none">{card.value}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{card.detail}</p>
+      <p className="mt-3 text-[1.7rem] font-semibold leading-none">{card.value}</p>
+      <p className="mt-2 text-[0.92rem] leading-6 text-slate-600">{card.detail}</p>
     </article>
   );
 }
@@ -96,8 +96,8 @@ function SummaryMetricCard({ accent, card }: { accent: number; card: SummaryCard
     <article className="relative overflow-hidden rounded-[1.7rem] border border-slate-200/80 bg-white px-5 py-5 shadow-[0_16px_35px_rgba(15,23,42,0.05)]">
       <div className={`absolute inset-x-5 top-0 h-1 rounded-full bg-gradient-to-r ${accentBarClassName}`} />
       <p className="text-[0.72rem] font-semibold uppercase tracking-[0.24em] text-blue-600">{card.label}</p>
-      <p className="mt-4 text-4xl font-semibold tracking-tight text-slate-950">{card.value}</p>
-      <p className="mt-3 text-sm leading-7 text-slate-500">{card.detail}</p>
+      <p className="mt-4 text-[2.55rem] font-semibold tracking-tight text-slate-950">{card.value}</p>
+      <p className="mt-3 text-[0.94rem] leading-7 text-slate-500">{card.detail}</p>
     </article>
   );
 }
@@ -116,7 +116,7 @@ function TaskFeedPanel({
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-blue-500">{title}</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Task Queue</h2>
+          <h2 className="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">Task Queue</h2>
         </div>
         <Link
           className="rounded-full border border-blue-200 bg-blue-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700 transition hover:bg-blue-100"
@@ -136,8 +136,8 @@ function TaskFeedPanel({
                 </span>
                 <span className="text-sm font-medium text-slate-400">Task</span>
               </div>
-              <h3 className="mt-4 text-xl font-semibold text-slate-950">{item.title}</h3>
-              <p className="mt-3 text-sm leading-7 text-slate-600">{item.description}</p>
+              <h3 className="mt-4 text-[1.12rem] font-semibold text-slate-950">{item.title}</h3>
+              <p className="mt-3 text-[0.94rem] leading-7 text-slate-600">{item.description}</p>
             </article>
           ))
         ) : (
@@ -160,7 +160,7 @@ function FocusPanel({
   return (
     <section className="rounded-[2rem] border border-slate-200/80 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-6 shadow-[0_18px_44px_rgba(15,23,42,0.05)]">
       <p className="text-xs font-semibold uppercase tracking-[0.28em] text-blue-500">{title}</p>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Today Focus</h2>
+      <h2 className="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">Today Focus</h2>
       <div className="mt-5 space-y-4">
         {items.length ? (
           items.map((item) => (
@@ -172,8 +172,8 @@ function FocusPanel({
               <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-blue-700">
                 {item.meta}
               </span>
-              <h3 className="mt-4 text-xl font-semibold text-slate-950">{item.title}</h3>
-              <p className="mt-3 text-sm leading-7 text-slate-600">{item.description}</p>
+              <h3 className="mt-4 text-[1.12rem] font-semibold text-slate-950">{item.title}</h3>
+              <p className="mt-3 text-[0.94rem] leading-7 text-slate-600">{item.description}</p>
             </Link>
           ))
         ) : (
@@ -188,14 +188,14 @@ function WeeklySummaryPanel({ cards, title }: { cards: SummaryCard[]; title: str
   return (
     <section className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.05)]">
       <p className="text-xs font-semibold uppercase tracking-[0.28em] text-blue-500">{title}</p>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Weekly Pulse</h2>
+      <h2 className="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">Weekly Pulse</h2>
       <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {cards.length ? (
           cards.map((card) => (
             <article className="rounded-[1.5rem] border border-slate-200 bg-slate-50/80 p-4" key={card.label}>
               <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-slate-500">{card.label}</p>
-              <p className="mt-3 text-2xl font-semibold text-slate-950">{card.value}</p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{card.detail}</p>
+              <p className="mt-3 text-[1.55rem] font-semibold text-slate-950">{card.value}</p>
+              <p className="mt-2 text-[0.92rem] leading-6 text-slate-600">{card.detail}</p>
             </article>
           ))
         ) : (
@@ -212,7 +212,7 @@ function NotificationPanel({ items, title }: { items: DashboardNotificationItem[
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-xs font-semibold uppercase tracking-[0.28em] text-blue-500">{title}</p>
-          <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Updates</h2>
+          <h2 className="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">Updates</h2>
         </div>
       </div>
       <div className="mt-5 space-y-4">
@@ -226,8 +226,8 @@ function NotificationPanel({ items, title }: { items: DashboardNotificationItem[
               <span className="rounded-full border border-blue-200 bg-white px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-blue-700">
                 {item.meta}
               </span>
-              <h3 className="mt-3 text-lg font-semibold text-slate-950">{item.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{item.detail}</p>
+              <h3 className="mt-3 text-[1.02rem] font-semibold text-slate-950">{item.title}</h3>
+              <p className="mt-2 text-[0.92rem] leading-6 text-slate-600">{item.detail}</p>
             </Link>
           ))
         ) : (
@@ -242,7 +242,7 @@ function CalendarPanel({ items, title }: { items: CalendarEventItem[]; title: st
   return (
     <section className="rounded-[2rem] border border-slate-200/80 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-6 shadow-[0_18px_44px_rgba(15,23,42,0.05)]">
       <p className="text-xs font-semibold uppercase tracking-[0.28em] text-blue-500">{title}</p>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Upcoming Items</h2>
+      <h2 className="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">Upcoming Items</h2>
       <div className="mt-5 space-y-4">
         {items.length ? (
           items.map((item) => (
@@ -255,8 +255,8 @@ function CalendarPanel({ items, title }: { items: CalendarEventItem[]; title: st
                   {item.type}
                 </span>
               </div>
-              <h3 className="mt-3 text-lg font-semibold text-slate-950">{item.title}</h3>
-              <p className="mt-2 text-sm leading-6 text-slate-600">{item.detail}</p>
+              <h3 className="mt-3 text-[1.02rem] font-semibold text-slate-950">{item.title}</h3>
+              <p className="mt-2 text-[0.92rem] leading-6 text-slate-600">{item.detail}</p>
             </article>
           ))
         ) : (
@@ -273,17 +273,17 @@ function PerformancePanel({ rows, title }: { rows: PerformanceScoreRow[]; title:
   return (
     <section className="rounded-[2rem] border border-slate-200/80 bg-white p-6 shadow-[0_18px_44px_rgba(15,23,42,0.05)]">
       <p className="text-xs font-semibold uppercase tracking-[0.28em] text-blue-500">{title}</p>
-      <h2 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">My Score</h2>
+      <h2 className="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">My Score</h2>
       {row ? (
         <div className="mt-5 rounded-[1.6rem] border border-slate-200 bg-[linear-gradient(135deg,#eff6ff_0%,#ffffff_58%,#f8fafc_100%)] p-5">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="text-sm font-medium text-slate-500">{row.employeeEmail}</p>
-              <p className="mt-2 text-3xl font-semibold tracking-tight text-slate-950">Score {row.score}</p>
+              <p className="mt-2 text-[2rem] font-semibold tracking-tight text-slate-950">Score {row.score}</p>
             </div>
             <div className="rounded-[1.4rem] border border-blue-200 bg-white px-5 py-4 text-center shadow-[0_12px_28px_rgba(37,99,235,0.08)]">
               <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-blue-600">Performance</p>
-              <p className="mt-2 text-3xl font-semibold text-slate-950">{row.score}</p>
+              <p className="mt-2 text-[2rem] font-semibold text-slate-950">{row.score}</p>
             </div>
           </div>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
@@ -317,8 +317,8 @@ function TaskQueueEmptyState({ message }: { message: string }) {
         </div>
         <div className="min-w-0 flex-1">
           <p className="text-[0.68rem] font-semibold uppercase tracking-[0.2em] text-blue-600">Current Status</p>
-          <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">No active task assignments</h3>
-          <p className="mt-3 max-w-2xl text-sm leading-7 text-slate-600">{message}</p>
+          <h3 className="mt-2 text-[1.85rem] font-semibold tracking-tight text-slate-950">No active task assignments</h3>
+          <p className="mt-3 max-w-2xl text-[0.94rem] leading-7 text-slate-600">{message}</p>
         </div>
       </div>
 
@@ -360,8 +360,8 @@ function QuickHint({
   return (
     <Link className="rounded-[1.3rem] border border-slate-200 bg-white p-4 transition hover:border-blue-200 hover:bg-blue-50/40" href={href}>
       <p className="text-[0.64rem] font-semibold uppercase tracking-[0.18em] text-slate-500">{meta}</p>
-      <p className="mt-2 text-base font-semibold text-slate-950">{label}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+      <p className="mt-2 text-[0.98rem] font-semibold text-slate-950">{label}</p>
+      <p className="mt-2 text-[0.9rem] leading-6 text-slate-600">{description}</p>
     </Link>
   );
 }
