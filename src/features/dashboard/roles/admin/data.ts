@@ -4,8 +4,8 @@ import { buildLeadershipDashboardOverview } from "@/features/dashboard/shared/le
 
 export async function getAdminDashboardOverviewData(session: AuthenticatedSession) {
   return buildLeadershipDashboardOverview(session, {
-    title: "Admin Dashboard",
-    description: "Operations overview for attendance, task movement, leave approvals, and daily reporting discipline.",
+    title: "Super Admin Dashboard",
+    description: "Read-only company overview for attendance, tasks, leave status, and reporting discipline across the business.",
   });
 }
 

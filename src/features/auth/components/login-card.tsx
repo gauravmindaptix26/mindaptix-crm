@@ -32,7 +32,7 @@ export function LoginCard({ registered = false, signupClosed = false }: LoginCar
         {registered ? <Feedback tone="success">Account created. Please log in to continue.</Feedback> : null}
         {state.error ? <Feedback>{state.error}</Feedback> : null}
         <Feedback tone="success">
-          Employees, Managers, and Sales users should use the login credentials created by their SUPER_ADMIN.
+          Employees and admins should use the login credentials created by their Super Admin.
         </Feedback>
 
         <TextField
@@ -81,7 +81,7 @@ export function LoginCard({ registered = false, signupClosed = false }: LoginCar
 
       <p className="mt-4 text-center text-sm text-slate-400">
         {signupClosed ? (
-          "Need an account? Contact your SUPER_ADMIN to create one for you."
+          "Need an account? Contact your Super Admin to create one for you."
         ) : (
           <>
             Don&apos;t have an account?{" "}

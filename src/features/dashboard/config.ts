@@ -30,7 +30,7 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
   { key: "tasks", label: "Tasks", href: "/dashboard/tasks", allowedRoles: ["SUPER_ADMIN", "MANAGER", "EMPLOYEE"] },
   { key: "dsr", label: "DSR", href: "/dashboard/dsr", allowedRoles: ["SUPER_ADMIN", "MANAGER", "EMPLOYEE"] },
   { key: "reports", label: "Reports", href: "/dashboard/reports", allowedRoles: ["SUPER_ADMIN", "MANAGER"] },
-  { key: "settings", label: "Settings", href: "/dashboard/settings", allowedRoles: ["SUPER_ADMIN", "MANAGER"] },
+  { key: "settings", label: "Settings", href: "/dashboard/settings", allowedRoles: ["MANAGER"] },
 ];
 
 export function getDashboardNavItemsForRole(role: UserRole) {
@@ -45,9 +45,9 @@ export function getDefaultDashboardHrefForRole(role: UserRole) {
 export function getDisplayRoleLabel(role: UserRole) {
   switch (role) {
     case "SUPER_ADMIN":
-      return "Admin";
+      return "Super Admin";
     case "MANAGER":
-      return "Manager";
+      return "Admin";
     case "EMPLOYEE":
       return "Employee";
     case "SALES":

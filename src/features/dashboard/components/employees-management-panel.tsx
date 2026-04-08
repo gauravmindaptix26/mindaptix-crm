@@ -85,7 +85,7 @@ export function EmployeesManagementPanel({
       {!readOnly ? (
         <section className="grid gap-6 xl:grid-cols-2">
           <PanelSection
-            description="Add employee, manager, or admin accounts with phone, joining date, and a basic onboarding document."
+            description="Add employee or admin accounts with phone, joining date, and a basic onboarding document."
             eyebrow="Employee Management"
             title="Create New Employee"
           >
@@ -126,9 +126,9 @@ export function EmployeesManagementPanel({
                 <SelectField
                   defaultValue={userState.values?.role ?? "EMPLOYEE"}
                   label="Role"
-                  labels={{ EMPLOYEE: "Employee", MANAGER: "Manager", SUPER_ADMIN: "Admin" }}
+                  labels={{ EMPLOYEE: "Employee", MANAGER: "Admin" }}
                   name="role"
-                  options={["EMPLOYEE", "MANAGER", "SUPER_ADMIN"]}
+                  options={["EMPLOYEE", "MANAGER"]}
                 />
                 <SelectField
                   defaultValue={userState.values?.status ?? "ACTIVE"}
@@ -141,11 +141,11 @@ export function EmployeesManagementPanel({
               <SelectField
                 defaultValue={userState.values?.managerId ?? ""}
                 includePlaceholder
-                label="Reporting Manager"
+                label="Reporting Admin"
                 labels={Object.fromEntries(managerOptions.map((manager) => [manager.id, manager.label]))}
                 name="managerId"
                 options={managerOptions.map((manager) => manager.id)}
-                placeholder="No manager"
+                placeholder="No admin"
               />
 
               <FileField label="Document Upload" name="document" />
@@ -214,11 +214,11 @@ export function EmployeesManagementPanel({
       <PanelSection
         description={
           readOnly
-            ? "View the employees currently visible in your team scope along with their assigned projects and status."
-            : "Select one employee from the list, then update name, email, role, status, manager, and projects from a single editor."
+            ? "View all company employees and admins along with their assigned projects and account status."
+            : "Select one employee from the list, then review name, email, role, status, reporting admin, and projects from a single editor."
         }
         eyebrow="Directory"
-        title={readOnly ? "Team Employees" : "Employee Directory"}
+        title={readOnly ? "Company Directory" : "Employee Directory"}
       >
         <div className="mt-6 grid gap-4 md:grid-cols-[minmax(0,1fr)_220px]">
           <label className="block">
@@ -226,14 +226,14 @@ export function EmployeesManagementPanel({
             <input
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none"
               onChange={(event) => setSearchTerm(event.target.value)}
-              placeholder="Search by name, email, phone, or manager"
+              placeholder="Search by name, email, phone, or admin"
               value={searchTerm}
             />
           </label>
           <SelectField
             defaultValue="ALL"
             label="Role Filter"
-            labels={{ ALL: "All Roles", EMPLOYEE: "Employee", MANAGER: "Manager" }}
+            labels={{ ALL: "All Roles", EMPLOYEE: "Employee", MANAGER: "Admin" }}
             name="directoryRoleFilter"
             onChangeValue={setRoleFilter}
             options={["ALL", "EMPLOYEE", "MANAGER"]}
@@ -272,7 +272,7 @@ export function EmployeesManagementPanel({
                   </div>
 
                   {user.role === "EMPLOYEE" ? (
-                    <ReadOnlyField label="Reporting Manager" value={user.managerName || "Not assigned"} />
+                    <ReadOnlyField label="Reporting Admin" value={user.managerName || "Not assigned"} />
                   ) : null}
 
                   <div className="flex flex-wrap gap-2">
@@ -302,7 +302,7 @@ export function EmployeesManagementPanel({
                 { label: "Employee" },
                 { label: "Role" },
                 { label: "Status" },
-                { label: "Manager" },
+                { label: "Admin" },
                 { label: "Projects" },
                 { label: "Action" },
               ]}
@@ -317,7 +317,7 @@ export function EmployeesManagementPanel({
                   </DashboardTableCell>
                   <DashboardTableCell>{roleLabel(user.role)}</DashboardTableCell>
                   <DashboardTableCell>{user.status}</DashboardTableCell>
-                  <DashboardTableCell>{user.managerName || "No manager"}</DashboardTableCell>
+                  <DashboardTableCell>{user.managerName || "No admin"}</DashboardTableCell>
                   <DashboardTableCell>
                     {user.projectIds.length ? user.projectIds.map((projectId) => projectNameById.get(projectId) ?? "Assigned Project").join(", ") : "No project assigned"}
                   </DashboardTableCell>
@@ -354,7 +354,7 @@ export function EmployeesManagementPanel({
                 <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   <ReadOnlyField label="Employee Name" value={selectedUser.fullName} />
                   <ReadOnlyField label="Email" value={selectedUser.email} />
-                  <ReadOnlyField label="Reporting Manager" value={selectedUser.managerName || "Not assigned"} />
+                  <ReadOnlyField label="Reporting Admin" value={selectedUser.managerName || "Not assigned"} />
                 </div>
 
                 <div className="mt-4 flex flex-wrap gap-2">
@@ -591,9 +591,9 @@ function getTodayDate() {
 function roleLabel(role: EmployeeDirectoryEntry["role"]) {
   switch (role) {
     case "SUPER_ADMIN":
-      return "Admin";
+      return "Super Admin";
     case "MANAGER":
-      return "Manager";
+      return "Admin";
     case "EMPLOYEE":
       return "Employee";
     case "SALES":

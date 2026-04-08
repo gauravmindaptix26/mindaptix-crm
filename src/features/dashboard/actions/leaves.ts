@@ -86,8 +86,8 @@ export async function applyLeaveRequest(_previousState: LeaveState, formData: Fo
 export async function reviewLeaveRequest(formData: FormData) {
   const session = await getCurrentSession();
 
-  if (!session || (session.user.role !== "SUPER_ADMIN" && session.user.role !== "MANAGER")) {
-    throw new Error("Only admin or manager can review leaves.");
+  if (!session || session.user.role !== "MANAGER") {
+    throw new Error("Only admin can review leaves.");
   }
 
   const leaveId = String(formData.get("leaveId") ?? "");
@@ -105,12 +105,10 @@ export async function reviewLeaveRequest(formData: FormData) {
     throw new Error("Leave request not found.");
   }
 
-  if (session.user.role === "MANAGER") {
-    const visibleUserIds = await getVisibleUserIdsForSession(session, { employeesOnly: true });
+  const visibleUserIds = await getVisibleUserIdsForSession(session, { employeesOnly: true });
 
-    if (!visibleUserIds.includes(leaveRequest.userId)) {
-      throw new Error("You can only review leave requests from your team.");
-    }
+  if (!visibleUserIds.includes(leaveRequest.userId)) {
+    throw new Error("You can only review leave requests from employee accounts.");
   }
 
   await LeaveRequestModel.findByIdAndUpdate(leaveId, {

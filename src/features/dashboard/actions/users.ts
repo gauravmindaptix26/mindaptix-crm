@@ -19,7 +19,7 @@ export async function createManagedUser(
   try {
     assertAdminOrManager(session);
   } catch {
-    return { error: "Only admin or manager can create users." };
+    return { error: "Only admin can create users." };
   }
 
   const fullName = String(formData.get("fullName") ?? "").trim();
@@ -163,7 +163,7 @@ function safeStatus(value: string): UserStatus {
 }
 
 function isMvpRole(value: string): value is UserRole {
-  return value === "SUPER_ADMIN" || value === "MANAGER" || value === "EMPLOYEE";
+  return value === "MANAGER" || value === "EMPLOYEE";
 }
 
 async function resolveManagerId(managerId: string, role: UserRole, currentUserId?: string) {

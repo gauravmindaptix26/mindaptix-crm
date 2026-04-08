@@ -22,8 +22,8 @@ export async function updateCompanySettings(
 ): Promise<SettingsState> {
   const session = await getCurrentSession();
 
-  if (!session || (session.user.role !== "SUPER_ADMIN" && session.user.role !== "MANAGER")) {
-    return { error: "Only admin or manager can update settings." };
+  if (!session || session.user.role !== "MANAGER") {
+    return { error: "Only admin can update settings." };
   }
 
   const companyName = String(formData.get("companyName") ?? "").trim();

@@ -31,7 +31,7 @@ export async function registerUser(_previousState: AuthFormState, formData: Form
 
     if (!publicRegistrationOpen) {
       return {
-        error: "Public signup is disabled. Ask your SUPER_ADMIN to create your account.",
+        error: "Public signup is disabled. Ask your Super Admin to create your account.",
         values: { fullName, email },
       };
     }

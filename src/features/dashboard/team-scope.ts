@@ -10,14 +10,10 @@ export async function getVisibleUserIdsForSession(
     employeesOnly?: boolean;
   },
 ) {
-  if (session.user.role === "SUPER_ADMIN") {
+  if (session.user.role === "SUPER_ADMIN" || session.user.role === "MANAGER") {
     const filter = options?.employeesOnly ? { role: "EMPLOYEE" } : { role: { $ne: "SUPER_ADMIN" as const } };
     const users = await UserModel.find(filter, { _id: 1 }).lean();
     return users.map((user) => user._id.toString());
-  }
-
-  if (session.user.role === "MANAGER") {
-    return getManagerTeamUserIds(session.user.id);
   }
 
   return [session.user.id];

@@ -30,7 +30,7 @@ export function RegisterCard({ signupClosed = false }: RegisterCardProps) {
         {state.error ? <Feedback>{state.error}</Feedback> : null}
         {signupClosed ? (
           <Feedback>
-            Public signup is closed. Contact your SUPER_ADMIN and ask them to create your company account.
+            Public signup is closed. Contact your Super Admin and ask them to create your company account.
           </Feedback>
         ) : null}
 

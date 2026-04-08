@@ -65,7 +65,7 @@ export async function getNotificationsForUser(userId: string, limit = 8) {
 export async function getAdminUserIds() {
   await connectDb();
 
-  const admins = await UserModel.find({ role: "SUPER_ADMIN", status: "ACTIVE" }, { _id: 1 }).lean();
+  const admins = await UserModel.find({ role: "MANAGER", status: "ACTIVE" }, { _id: 1 }).lean();
   return admins.map((admin) => admin._id.toString());
 }
 

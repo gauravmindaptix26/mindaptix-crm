@@ -24,8 +24,8 @@ type TaskState = {
 export async function createTask(_previousState: TaskState, formData: FormData): Promise<TaskState> {
   const session = await getCurrentSession();
 
-  if (!session || (session.user.role !== "SUPER_ADMIN" && session.user.role !== "MANAGER")) {
-    return { error: "Only admin or manager can assign tasks." };
+  if (!session || session.user.role !== "MANAGER") {
+    return { error: "Only admin can assign tasks." };
   }
 
   const title = String(formData.get("title") ?? "").trim();
@@ -114,7 +114,6 @@ export async function updateTaskStatus(formData: FormData) {
   }
 
   if (
-    session.user.role !== "SUPER_ADMIN" &&
     session.user.role !== "MANAGER" &&
     task.assignedUserId !== session.user.id
   ) {
@@ -164,7 +163,6 @@ export async function addTaskComment(formData: FormData) {
   }
 
   const canAccess =
-    session.user.role === "SUPER_ADMIN" ||
     session.user.role === "MANAGER" ||
     task.assignedUserId === session.user.id ||
     task.assignedByUserId === session.user.id;

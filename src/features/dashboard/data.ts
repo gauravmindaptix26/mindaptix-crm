@@ -382,11 +382,11 @@ export async function getDashboardOverviewData(session: AuthenticatedSession): P
     });
 
     return {
-      title: session.user.role === "SUPER_ADMIN" ? "Admin Dashboard" : "Manager Dashboard",
+      title: session.user.role === "SUPER_ADMIN" ? "Super Admin Dashboard" : "Admin Dashboard",
       description:
         session.user.role === "SUPER_ADMIN"
-          ? "Operations overview for attendance, task movement, leave approvals, and daily reporting discipline."
-          : "Manager control center for company-wide attendance, task movement, leave approvals, and daily reporting discipline.",
+          ? "Read-only company overview for attendance, tasks, leave status, and reporting discipline across the business."
+          : "Admin control center for employee operations, task movement, leave approvals, and daily reporting discipline.",
       cards: [
         { label: "Present Today", value: String(presentToday), detail: "Employees who marked attendance today." },
         { label: "On Leave Today", value: String(onLeaveToday), detail: "Approved leave records active for today." },
@@ -588,8 +588,8 @@ export async function getEmployeesPageData(session?: AuthenticatedSession): Prom
       label: `${manager.fullName} (${manager.email})`,
     })),
     summaryCards: [
-      { label: "Total Team", value: String(activeUsers.length), detail: "Active manager and employee accounts available in the company." },
-      { label: "Managers", value: String(managerCount), detail: "Manager accounts currently active." },
+      { label: "Total Team", value: String(activeUsers.length), detail: "Active admin and employee accounts available in the company." },
+      { label: "Admins", value: String(managerCount), detail: "Admin accounts currently active." },
       { label: "Employees", value: String(employeeCount), detail: "Employee accounts available for task and project assignment." },
       { label: "Projects", value: String(projects.length), detail: "Projects available for employee assignment and DSR mapping." },
     ],
@@ -600,7 +600,7 @@ export async function getEmployeesPageData(session?: AuthenticatedSession): Prom
       phone: user.phone ?? "",
       joiningDate: formatDate(user.joiningDate),
       managerId: user.managerId ?? "",
-      managerName: user.managerId ? managerMap.get(user.managerId)?.fullName ?? "Unknown manager" : "",
+      managerName: user.managerId ? managerMap.get(user.managerId)?.fullName ?? "Unknown admin" : "",
       role: user.role,
       status: user.status ?? "ACTIVE",
       projectIds: user.projectIds ?? [],
@@ -878,7 +878,7 @@ export async function getDsrPageData(session: AuthenticatedSession): Promise<Dsr
       reminderMessage:
         !hasTodayDsr && currentTime >= "19:00"
           ? "It is after 7 PM and your DSR is still pending. Submit it today to keep reporting discipline clean."
-          : "Submit your DSR before day close so your manager and admin can review progress without follow-up.",
+          : "Submit your DSR before day close so your admin can review progress without follow-up.",
     };
   }
 
@@ -1166,7 +1166,7 @@ function mapTaskRow(task: {
     description: task.description,
     assignedUserId: task.assignedUserId,
     assignedUserName: userMap.get(task.assignedUserId) ?? "Unknown employee",
-    assignedByName: userMap.get(task.assignedByUserId) ?? "Unknown manager",
+    assignedByName: userMap.get(task.assignedByUserId) ?? "Unknown admin",
     dueDate: task.dueDate,
     status: task.status,
     priority: task.priority ?? "MEDIUM",

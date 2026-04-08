@@ -10,6 +10,7 @@ import type { LeavePageData } from "@/features/dashboard/data";
 import type { LeaveType } from "@/database/mongodb/models/leave-request";
 
 type LeavesPanelProps = {
+  canApply: boolean;
   canReview: boolean;
   data: LeavePageData;
 };
@@ -23,10 +24,10 @@ const INITIAL_LEAVE_STATE = {
   },
 };
 
-export function LeavesPanel({ canReview, data }: LeavesPanelProps) {
+export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
   const [state, formAction, pending] = useActionState(applyLeaveRequest, INITIAL_LEAVE_STATE);
   const pendingReviewCount = data.leaves.filter((leave) => leave.status === "PENDING").length;
-  const showApplyForm = !canReview;
+  const showApplyForm = canApply;
 
   return (
     <div className="space-y-6 overflow-x-hidden px-5 py-5 sm:px-7 sm:py-6">
@@ -39,7 +40,7 @@ export function LeavesPanel({ canReview, data }: LeavesPanelProps) {
       <section className={`grid gap-6 ${showApplyForm ? "xl:grid-cols-[420px_minmax(0,1fr)]" : ""}`}>
         {showApplyForm ? (
           <PanelSection
-            description="Apply for paid or sick leave with a reason and date range. Managers and admins can review visible team requests from the same page."
+            description="Apply for paid or sick leave with a reason and date range. Admins can review company leave requests from the same page."
             eyebrow="Leave Form"
             title="Apply Leave"
           >
@@ -78,10 +79,12 @@ export function LeavesPanel({ canReview, data }: LeavesPanelProps) {
           description={
             canReview
               ? "Review employee leave requests, track used leave days, and approve or reject pending requests from one place."
+              : !canApply
+                ? "Read-only company leave history showing requested dates, current status, and employee leave usage."
               : "Complete leave history for your account, including pending, approved, and rejected requests."
           }
           eyebrow="Leave History"
-          title={canReview ? "Review Requests" : "Requests"}
+          title={canReview ? "Review Requests" : canApply ? "Requests" : "Leave History"}
         >
           <div className="mt-6 max-w-full">
             {canReview ? (

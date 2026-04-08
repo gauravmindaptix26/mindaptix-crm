@@ -4,8 +4,8 @@ import { buildLeadershipDashboardOverview } from "@/features/dashboard/shared/le
 
 export async function getManagerDashboardOverviewData(session: AuthenticatedSession) {
   return buildLeadershipDashboardOverview(session, {
-    title: "Manager Dashboard",
-    description: "Manager control center for company-wide attendance, task movement, leave approvals, and daily reporting discipline.",
+    title: "Admin Dashboard",
+    description: "Admin control center for employee operations, task movement, leave approvals, and daily reporting discipline.",
   });
 }
 

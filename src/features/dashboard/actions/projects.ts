@@ -35,7 +35,7 @@ export async function createManagedProject(
   try {
     assertAdminOrManager(session);
   } catch {
-    return { error: "Only admin or manager can create projects." };
+    return { error: "Only admin can create projects." };
   }
 
   const name = String(formData.get("name") ?? "").trim();

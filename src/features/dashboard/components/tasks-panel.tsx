@@ -12,6 +12,7 @@ import type { TaskPriority } from "@/database/mongodb/models/task";
 type TasksPanelProps = {
   canAssign: boolean;
   data: TaskPageData;
+  readOnly: boolean;
 };
 
 const INITIAL_TASK_STATE = {
@@ -25,7 +26,7 @@ const INITIAL_TASK_STATE = {
   },
 };
 
-export function TasksPanel({ canAssign, data }: TasksPanelProps) {
+export function TasksPanel({ canAssign, data, readOnly }: TasksPanelProps) {
   const [state, formAction, pending] = useActionState(createTask, INITIAL_TASK_STATE);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
@@ -124,7 +125,13 @@ export function TasksPanel({ canAssign, data }: TasksPanelProps) {
         ) : null}
 
         <PanelSection
-          description={canAssign ? "Track assigned work, overdue tasks, comments, and updates from one board." : "Track your assigned work, upload proof, and update status from one board."}
+          description={
+            readOnly
+              ? "Read-only company task board for status, labels, files, and team discussion."
+              : canAssign
+                ? "Track assigned work, overdue tasks, comments, and updates from one board."
+                : "Track your assigned work, upload proof, and update status from one board."
+          }
           eyebrow="Task Board"
           title="Tasks"
         >
@@ -149,7 +156,7 @@ export function TasksPanel({ canAssign, data }: TasksPanelProps) {
               hasRows={filteredTasks.length > 0}
             >
               {filteredTasks.map((task) => (
-                <TaskRow key={task.id} task={task} />
+                <TaskRow key={task.id} readOnly={readOnly} task={task} />
               ))}
             </DashboardTable>
           </div>
@@ -190,7 +197,7 @@ function PanelSection({
   );
 }
 
-function TaskRow({ task }: { task: TaskEntry }) {
+function TaskRow({ readOnly, task }: { readOnly: boolean; task: TaskEntry }) {
   return (
     <tr className={task.isOverdue ? "bg-red-50/40" : ""}>
       <DashboardTableCell className="min-w-[220px]">
@@ -209,19 +216,23 @@ function TaskRow({ task }: { task: TaskEntry }) {
           </Badge>
           {task.isOverdue ? <Badge tone="red">Overdue</Badge> : null}
         </div>
-        <form action={updateTaskStatus} className="mt-3 space-y-3">
-          <input name="taskId" type="hidden" value={task.id} />
-          <SelectField
-            defaultValue={task.status}
-            label="Status"
-            labels={{ PENDING: "Pending", IN_PROGRESS: "In Progress", COMPLETED: "Completed" }}
-            name="status"
-            options={["PENDING", "IN_PROGRESS", "COMPLETED"]}
-          />
-          <Button className="sm:w-auto" type="submit">
-            Save
-          </Button>
-        </form>
+        {readOnly ? (
+          <p className="mt-3 text-sm text-slate-500">View only access for super admin.</p>
+        ) : (
+          <form action={updateTaskStatus} className="mt-3 space-y-3">
+            <input name="taskId" type="hidden" value={task.id} />
+            <SelectField
+              defaultValue={task.status}
+              label="Status"
+              labels={{ PENDING: "Pending", IN_PROGRESS: "In Progress", COMPLETED: "Completed" }}
+              name="status"
+              options={["PENDING", "IN_PROGRESS", "COMPLETED"]}
+            />
+            <Button className="sm:w-auto" type="submit">
+              Save
+            </Button>
+          </form>
+        )}
       </DashboardTableCell>
       <DashboardTableCell className="min-w-[220px]">
         <div className="flex flex-wrap gap-2">
@@ -257,20 +268,22 @@ function TaskRow({ task }: { task: TaskEntry }) {
             <p className="text-sm text-slate-500">No comments yet.</p>
           )}
         </div>
-        <form action={addTaskComment} className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px]">
-          <input name="taskId" type="hidden" value={task.id} />
-          <input
-            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none"
-            name="message"
-            placeholder="Write an update or reply"
-            required
-          />
-          <div className="flex items-end">
-            <Button className="sm:w-auto" type="submit">
-              Comment
-            </Button>
-          </div>
-        </form>
+        {readOnly ? null : (
+          <form action={addTaskComment} className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_120px]">
+            <input name="taskId" type="hidden" value={task.id} />
+            <input
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none"
+              name="message"
+              placeholder="Write an update or reply"
+              required
+            />
+            <div className="flex items-end">
+              <Button className="sm:w-auto" type="submit">
+                Comment
+              </Button>
+            </div>
+          </form>
+        )}
       </DashboardTableCell>
     </tr>
   );

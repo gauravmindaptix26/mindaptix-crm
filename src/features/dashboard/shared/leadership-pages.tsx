@@ -20,6 +20,8 @@ import {
 import type { DashboardPageKey } from "@/features/dashboard/shared/page-types";
 
 export async function renderLeadershipDashboardPage(page: DashboardPageKey, session: AuthenticatedSession) {
+  const isReadOnlySuperAdmin = session.user.role === "SUPER_ADMIN";
+
   switch (page) {
     case "employees": {
       const data = await getEmployeesPageData(session);
@@ -27,7 +29,7 @@ export async function renderLeadershipDashboardPage(page: DashboardPageKey, sess
         <EmployeesManagementPanel
           managerOptions={data.managerOptions}
           projects={data.projects}
-          readOnly={false}
+          readOnly={isReadOnlySuperAdmin}
           recentUpdates={data.recentUpdates}
           summaryCards={data.summaryCards}
           users={data.users}
@@ -40,11 +42,11 @@ export async function renderLeadershipDashboardPage(page: DashboardPageKey, sess
     }
     case "leaves": {
       const data = await getLeavesPageData(session);
-      return <LeavesPanel canReview data={data} />;
+      return <LeavesPanel canApply={false} canReview={!isReadOnlySuperAdmin} data={data} />;
     }
     case "tasks": {
       const data = await getTasksPageData(session);
-      return <TasksPanel canAssign data={data} />;
+      return <TasksPanel canAssign={!isReadOnlySuperAdmin} readOnly={isReadOnlySuperAdmin} data={data} />;
     }
     case "dsr": {
       const data = await getDsrPageData(session);
