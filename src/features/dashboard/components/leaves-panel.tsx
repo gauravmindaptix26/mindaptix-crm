@@ -1,7 +1,8 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useActionState } from "react";
+import { startTransition, useActionState, useEffect, useEffectEvent } from "react";
+import { useRouter } from "next/navigation";
 import { applyLeaveRequest, reviewLeaveRequest } from "@/features/dashboard/actions/leaves";
 import { Feedback } from "@/shared/ui/feedback";
 import { Button } from "@/shared/ui/button";
@@ -25,6 +26,7 @@ const INITIAL_LEAVE_STATE = {
 };
 
 export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
+  const router = useRouter();
   const [state, formAction, pending] = useActionState(applyLeaveRequest, INITIAL_LEAVE_STATE);
   const pendingReviewCount = data.leaves.filter((leave) => leave.status === "PENDING").length;
   const showApplyForm = canApply;
@@ -34,6 +36,31 @@ export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
     const rightPriority = right.status === "PENDING" ? 0 : right.status === "APPROVED" ? 1 : 2;
     return leftPriority - rightPriority || left.startDate.localeCompare(right.startDate);
   });
+  const refreshLeavesView = useEffectEvent(() => {
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") {
+      return;
+    }
+
+    startTransition(() => {
+      router.refresh();
+    });
+  });
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      if (!pending) {
+        refreshLeavesView();
+      }
+    }, 2500);
+
+    return () => window.clearInterval(timer);
+  }, [pending]);
+
+  useEffect(() => {
+    if (state.success) {
+      refreshLeavesView();
+    }
+  }, [state.success]);
 
   return (
     <div className="space-y-6 overflow-x-hidden px-5 py-5 sm:px-7 sm:py-6">
