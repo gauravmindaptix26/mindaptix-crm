@@ -6,7 +6,7 @@ import { applyLeaveRequest, reviewLeaveRequest } from "@/features/dashboard/acti
 import { Feedback } from "@/shared/ui/feedback";
 import { Button } from "@/shared/ui/button";
 import { DashboardTable, DashboardTableCell } from "@/shared/ui/dashboard-table";
-import type { LeavePageData } from "@/features/dashboard/data";
+import type { LeavePageData } from "@/features/dashboard/types";
 import type { LeaveType } from "@/database/mongodb/models/leave-request";
 
 type LeavesPanelProps = {

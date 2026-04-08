@@ -6,7 +6,7 @@ import { addTaskComment, createTask, updateTaskStatus } from "@/features/dashboa
 import { Feedback } from "@/shared/ui/feedback";
 import { Button } from "@/shared/ui/button";
 import { DashboardTable, DashboardTableCell } from "@/shared/ui/dashboard-table";
-import type { TaskEntry, TaskPageData } from "@/features/dashboard/data";
+import type { TaskEntry, TaskPageData } from "@/features/dashboard/types";
 import type { TaskPriority } from "@/database/mongodb/models/task";
 
 type TasksPanelProps = {

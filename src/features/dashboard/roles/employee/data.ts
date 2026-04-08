@@ -5,7 +5,7 @@ import { DailyUpdateModel } from "@/database/mongodb/models/daily-update";
 import { LeaveRequestModel } from "@/database/mongodb/models/leave-request";
 import { ProjectModel } from "@/database/mongodb/models/project";
 import { TaskModel } from "@/database/mongodb/models/task";
-import type { DashboardOverviewData } from "@/features/dashboard/data";
+import type { DashboardOverviewData } from "@/features/dashboard/types";
 import {
   buildOverviewCalendarItems,
   buildOverviewPerformanceRows,

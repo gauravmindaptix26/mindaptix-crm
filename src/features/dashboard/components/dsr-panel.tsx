@@ -6,7 +6,7 @@ import { submitDailyUpdate } from "@/features/dashboard/actions/dsr";
 import { Feedback } from "@/shared/ui/feedback";
 import { Button } from "@/shared/ui/button";
 import { DashboardTable, DashboardTableCell } from "@/shared/ui/dashboard-table";
-import type { DsrPageData, EmployeeProjectView } from "@/features/dashboard/data";
+import type { DsrPageData, EmployeeProjectView } from "@/features/dashboard/types";
 
 type DsrPanelProps = {
   data: DsrPageData;

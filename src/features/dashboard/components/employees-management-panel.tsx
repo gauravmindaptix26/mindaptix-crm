@@ -14,7 +14,7 @@ import type {
   EmployeeOption,
   EmployeeProjectEntry,
   SummaryCard,
-} from "@/features/dashboard/data";
+} from "@/features/dashboard/types";
 import type { ProjectPriority, ProjectStatus } from "@/database/mongodb/models/project";
 
 type EmployeesManagementPanelProps = {

@@ -13,7 +13,7 @@ import type {
   LeaveTrendPoint,
   PerformanceScoreRow,
   SummaryCard,
-} from "@/features/dashboard/data";
+} from "@/features/dashboard/types";
 import connectDb from "@/database/mongodb/connect";
 
 export async function getDashboardOverviewContext(session: AuthenticatedSession) {

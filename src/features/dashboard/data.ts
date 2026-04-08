@@ -10,316 +10,55 @@ import { ProjectModel } from "@/database/mongodb/models/project";
 import { SettingModel } from "@/database/mongodb/models/setting";
 import { TASK_LABELS, TaskModel } from "@/database/mongodb/models/task";
 import { UserModel } from "@/database/mongodb/models/user";
+import type {
+  AttendanceMonthlyRow,
+  AttendancePageData,
+  DashboardBreakdownSlice,
+  DashboardOverviewData,
+  DsrPageData,
+  EmployeesPageData,
+  LeaveEmployeeSummary,
+  LeavePageData,
+  PerformanceScoreRow,
+  ReportsPageData,
+  SettingsPageData,
+  TaskPageData,
+} from "@/features/dashboard/types";
 
-export type SummaryCard = {
-  label: string;
-  value: string;
-  detail: string;
-};
-
-export type DashboardListItem = {
-  id: string;
-  title: string;
-  meta: string;
-  description: string;
-};
-
-export type DashboardNotificationItem = {
-  id: string;
-  title: string;
-  detail: string;
-  meta: string;
-  actionUrl: string;
-};
-
-export type CalendarEventItem = {
-  id: string;
-  title: string;
-  date: string;
-  type: string;
-  detail: string;
-};
-
-export type PerformanceScoreRow = {
-  id: string;
-  employeeName: string;
-  employeeEmail: string;
-  score: number;
-  attendanceRate: number;
-  taskCompletionRate: number;
-  dsrConsistencyRate: number;
-};
-
-export type DashboardBreakdownSlice = {
-  label: string;
-  value: number;
-  color: string;
-};
-
-export type AttendanceTrendPoint = {
-  label: string;
-  present: number;
-  onLeave: number;
-  absent: number;
-};
-
-export type LeaveTrendPoint = {
-  label: string;
-  count: number;
-};
-
-export type DsrTrendPoint = {
-  label: string;
-  submitted: number;
-  missing: number;
-};
-
-export type EmployeeProjectSummaryRow = {
-  id: string;
-  employeeName: string;
-  employeeEmail: string;
-  pendingProjects: number;
-  completedProjects: number;
-};
-
-export type DashboardOverviewData = {
-  title: string;
-  description: string;
-  cards: SummaryCard[];
-  priorityAlert?: {
-    title: string;
-    detail: string;
-    actionLabel: string;
-    actionUrl: string;
-  };
-  notificationTitle?: string;
-  notifications?: DashboardNotificationItem[];
-  weeklySummaryTitle?: string;
-  weeklySummaryCards?: SummaryCard[];
-  calendarTitle?: string;
-  calendarItems?: CalendarEventItem[];
-  performanceTitle?: string;
-  performanceRows?: PerformanceScoreRow[];
-  directoryEmptyMessage?: string;
-  directoryItems?: DashboardListItem[];
-  directoryTitle?: string;
-  primaryListTitle: string;
-  primaryEmptyMessage: string;
-  primaryItems: DashboardListItem[];
-  secondaryListTitle: string;
-  secondaryEmptyMessage: string;
-  secondaryItems: DashboardListItem[];
-  attendanceBreakdown?: DashboardBreakdownSlice[];
-  attendanceTrend?: AttendanceTrendPoint[];
-  taskStatusBreakdown?: DashboardBreakdownSlice[];
-  projectStatusBreakdown?: DashboardBreakdownSlice[];
-  leaveTrend?: LeaveTrendPoint[];
-  dsrTrend?: DsrTrendPoint[];
-  employeeProjectRows?: EmployeeProjectSummaryRow[];
-  financeNote?: string;
-};
-
-export type EmployeeDirectoryEntry = {
-  id: string;
-  fullName: string;
-  email: string;
-  phone: string;
-  joiningDate: string;
-  managerId: string;
-  managerName: string;
-  role: "SUPER_ADMIN" | "MANAGER" | "EMPLOYEE" | "SALES";
-  status: "ACTIVE" | "SUSPENDED";
-  projectIds: string[];
-  documentName: string;
-  documentUrl: string;
-};
-
-export type EmployeeProjectEntry = {
-  id: string;
-  name: string;
-  summary: string;
-  status: string;
-  priority: string;
-  dueDate: string;
-  assignedUserIds: string[];
-};
-
-export type FileAttachmentView = {
-  name: string;
-  url: string;
-};
-
-export type DsrFeedEntry = {
-  id: string;
-  employeeName: string;
-  employeeEmail: string;
-  projectName: string;
-  workDate: string;
-  summary: string;
-  accomplishments: string;
-  blockers: string;
-  nextPlan: string;
-  attachments: FileAttachmentView[];
-};
-
-export type EmployeesPageData = {
-  managerOptions: EmployeeOption[];
-  summaryCards: SummaryCard[];
-  users: EmployeeDirectoryEntry[];
-  projects: EmployeeProjectEntry[];
-  recentUpdates: DsrFeedEntry[];
-};
-
-export type AttendanceRecordView = {
-  id: string;
-  employeeName: string;
-  employeeEmail: string;
-  dateKey: string;
-  checkInAt: string;
-  checkOutAt: string;
-  status: string;
-};
-
-export type AttendanceMonthlyRow = {
-  id: string;
-  employeeName: string;
-  daysMarked: number;
-  completedDays: number;
-};
-
-export type AttendancePageData = {
-  canMarkAttendance: boolean;
-  summaryCards: SummaryCard[];
-  todayRecord: AttendanceRecordView | null;
-  todayRecords: AttendanceRecordView[];
-  monthlyRows: AttendanceMonthlyRow[];
-};
-
-export type LeaveEntry = {
-  id: string;
-  employeeId: string;
-  employeeName: string;
-  employeeEmail: string;
-  leaveType: string;
-  startDate: string;
-  endDate: string;
-  requestedDays: number;
-  reason: string;
-  status: string;
-};
-
-export type LeaveEmployeeSummary = {
-  id: string;
-  employeeName: string;
-  employeeEmail: string;
-  approvedRequests: number;
-  pendingRequests: number;
-  rejectedRequests: number;
-  approvedDays: number;
-  requestedDays: number;
-};
-
-export type LeavePageData = {
-  summaryCards: SummaryCard[];
-  leaves: LeaveEntry[];
-  employeeSummaries: LeaveEmployeeSummary[];
-};
-
-export type TaskCommentView = {
-  id: string;
-  userName: string;
-  role: string;
-  message: string;
-  createdAt: string;
-};
-
-export type TaskEntry = {
-  id: string;
-  title: string;
-  description: string;
-  assignedUserId: string;
-  assignedUserName: string;
-  assignedByName: string;
-  dueDate: string;
-  status: string;
-  priority: string;
-  labels: string[];
-  isOverdue: boolean;
-  attachments: FileAttachmentView[];
-  comments: TaskCommentView[];
-};
-
-export type EmployeeOption = {
-  id: string;
-  label: string;
-};
-
-export type TaskPageData = {
-  summaryCards: SummaryCard[];
-  tasks: TaskEntry[];
-  employeeOptions: EmployeeOption[];
-  labelOptions: string[];
-};
-
-export type EmployeeProjectView = {
-  id: string;
-  name: string;
-  summary: string;
-  status: string;
-  priority: string;
-  dueDate: string;
-};
-
-export type EmployeeUpdateView = {
-  id: string;
-  workDate: string;
-  summary: string;
-  accomplishments: string;
-  blockers: string;
-  nextPlan: string;
-  projectId: string;
-  projectName: string;
-  attachments: FileAttachmentView[];
-};
-
-export type DsrMissingEntry = {
-  id: string;
-  employeeName: string;
-  employeeEmail: string;
-};
-
-export type DsrPageData =
-  | {
-      mode: "employee";
-      summaryCards: SummaryCard[];
-      projects: EmployeeProjectView[];
-      updates: EmployeeUpdateView[];
-      reminderMessage: string;
-    }
-  | {
-      mode: "review";
-      summaryCards: SummaryCard[];
-      updates: DsrFeedEntry[];
-      missingEmployees: DsrMissingEntry[];
-      reminderMessage: string;
-    };
-
-export type ReportsPageData = {
-  summaryCards: SummaryCard[];
-  weeklySummaryCards: SummaryCard[];
-  calendarItems: CalendarEventItem[];
-  performanceRows: PerformanceScoreRow[];
-  attendanceRows: AttendanceMonthlyRow[];
-  leaveRows: LeaveEntry[];
-  taskRows: TaskEntry[];
-};
-
-export type SettingsPageData = {
-  companyName: string;
-  workStart: string;
-  workEnd: string;
-  leavePolicy: string;
-};
+export type {
+  AttendanceMonthlyRow,
+  AttendancePageData,
+  AttendanceRecordView,
+  AttendanceTrendPoint,
+  CalendarEventItem,
+  DashboardBreakdownSlice,
+  DashboardListItem,
+  DashboardNotificationItem,
+  DashboardOverviewData,
+  DsrFeedEntry,
+  DsrMissingEntry,
+  DsrPageData,
+  DsrTrendPoint,
+  EmployeeDirectoryEntry,
+  EmployeeOption,
+  EmployeeProjectEntry,
+  EmployeeProjectSummaryRow,
+  EmployeeProjectView,
+  EmployeeUpdateView,
+  EmployeesPageData,
+  FileAttachmentView,
+  LeaveEmployeeSummary,
+  LeaveEntry,
+  LeavePageData,
+  LeaveTrendPoint,
+  PerformanceScoreRow,
+  ReportsPageData,
+  SettingsPageData,
+  SummaryCard,
+  TaskCommentView,
+  TaskEntry,
+  TaskPageData,
+} from "@/features/dashboard/types";
 
 export async function getDashboardOverviewData(session: AuthenticatedSession): Promise<DashboardOverviewData> {
   await connectDb();

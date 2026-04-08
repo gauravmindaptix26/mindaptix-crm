@@ -5,7 +5,7 @@ import { DsrPanel } from "@/features/dashboard/components/dsr-panel";
 import { LeavesPanel } from "@/features/dashboard/components/leaves-panel";
 import { TasksPanel } from "@/features/dashboard/components/tasks-panel";
 import type { AuthenticatedSession } from "@/features/auth/lib/auth-session";
-import { getAttendancePageData, getDsrPageData, getLeavesPageData, getTasksPageData } from "@/features/dashboard/data";
+import { getAttendancePageData, getDsrPageData, getLeavesPageData, getTasksPageData } from "@/features/dashboard/server/page-data";
 import type { DashboardPageKey } from "@/features/dashboard/shared/page-types";
 
 export async function renderEmployeeDashboardPage(page: DashboardPageKey, session: AuthenticatedSession) {

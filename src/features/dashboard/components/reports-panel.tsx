@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { useMemo, useState } from "react";
 import { DashboardTable, DashboardTableCell } from "@/shared/ui/dashboard-table";
-import type { ReportsPageData } from "@/features/dashboard/data";
+import type { ReportsPageData } from "@/features/dashboard/types";
 
 type ReportsPanelProps = {
   data: ReportsPageData;

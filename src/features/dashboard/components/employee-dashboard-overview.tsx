@@ -9,7 +9,7 @@ import type {
   DashboardOverviewData,
   PerformanceScoreRow,
   SummaryCard,
-} from "@/features/dashboard/data";
+} from "@/features/dashboard/types";
 
 type EmployeeDashboardOverviewProps = {
   overview: DashboardOverviewData;

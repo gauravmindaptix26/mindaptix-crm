@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { checkInAttendance, checkOutAttendance } from "@/features/dashboard/actions/attendance";
 import { Button } from "@/shared/ui/button";
 import { DashboardTable, DashboardTableCell } from "@/shared/ui/dashboard-table";
-import type { AttendancePageData } from "@/features/dashboard/data";
+import type { AttendancePageData } from "@/features/dashboard/types";
 
 type AttendancePanelProps = {
   data: AttendancePageData;

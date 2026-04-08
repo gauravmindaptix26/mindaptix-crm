@@ -16,7 +16,7 @@ import {
   getReportsPageData,
   getSettingsPageData,
   getTasksPageData,
-} from "@/features/dashboard/data";
+} from "@/features/dashboard/server/page-data";
 import type { DashboardPageKey } from "@/features/dashboard/shared/page-types";
 
 export async function renderLeadershipDashboardPage(page: DashboardPageKey, session: AuthenticatedSession) {

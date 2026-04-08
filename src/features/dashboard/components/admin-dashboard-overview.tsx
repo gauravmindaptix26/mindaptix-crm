@@ -29,7 +29,7 @@ import type {
   LeaveTrendPoint,
   PerformanceScoreRow,
   SummaryCard,
-} from "@/features/dashboard/data";
+} from "@/features/dashboard/types";
 
 type AdminDashboardOverviewProps = {
   attendanceBreakdown?: DashboardBreakdownSlice[];
