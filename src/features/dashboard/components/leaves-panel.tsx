@@ -203,17 +203,21 @@ export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
               </div>
             ) : null}
 
-            <div className={`grid gap-4 ${canReview ? "xl:grid-cols-2" : "grid-cols-1"}`}>
-              {displayedLeaves.length ? (
-                displayedLeaves.map((leave) => (
-                  <LeaveRequestCard canDelete={canApply || canReview} canReview={canReview} key={leave.id} leave={leave} />
-                ))
-              ) : (
-                <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">
-                  No leave requests available yet.
-                </div>
-              )}
-            </div>
+            {canApply && !canReview ? (
+              <EmployeeLeaveHistoryTable leaves={displayedLeaves} />
+            ) : (
+              <div className={`grid gap-4 ${canReview ? "xl:grid-cols-2" : "grid-cols-1"}`}>
+                {displayedLeaves.length ? (
+                  displayedLeaves.map((leave) => (
+                    <LeaveRequestCard canDelete={canApply || canReview} canReview={canReview} key={leave.id} leave={leave} />
+                  ))
+                ) : (
+                  <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">
+                    No leave requests available yet.
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </PanelSection>
       </section>
@@ -314,6 +318,65 @@ function MetricBadge({
     <div className={`rounded-2xl border px-3 py-3 shadow-[0_10px_22px_rgba(255,255,255,0.32)] ${className}`}>
       <p className="text-[0.64rem] font-semibold uppercase tracking-[0.18em] opacity-80">{label}</p>
       <p className="mt-2 text-xl font-semibold leading-none">{value}</p>
+    </div>
+  );
+}
+
+function EmployeeLeaveHistoryTable({ leaves }: { leaves: LeavePageData["leaves"] }) {
+  return (
+    <div className="max-w-full overflow-hidden rounded-[1.7rem] border border-slate-200/80 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] shadow-[0_18px_36px_rgba(15,23,42,0.06)]">
+      <DashboardTable
+        columns={[
+          { label: "Type" },
+          { label: "Dates", className: "min-w-[210px]" },
+          { label: "Days" },
+          { label: "Reason", className: "min-w-[220px]" },
+          { label: "Status" },
+          { label: "Action", className: "w-[110px]" },
+        ]}
+        emptyMessage="No leave requests available yet."
+        hasRows={leaves.length > 0}
+        hideScrollbar
+      >
+        {leaves.map((leave) => (
+          <tr className="bg-white/80 transition hover:bg-sky-50/50" key={leave.id}>
+            <DashboardTableCell>
+              <span className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] ${getLeaveTypeBadgeClassName(leave.leaveType)}`}>
+                {formatLabel(leave.leaveType)}
+              </span>
+            </DashboardTableCell>
+            <DashboardTableCell>
+              <div className="text-sm font-semibold text-slate-900">
+                {leave.startDate} <span className="mx-1 text-xs uppercase tracking-[0.16em] text-slate-400">to</span> {leave.endDate}
+              </div>
+            </DashboardTableCell>
+            <DashboardTableCell>
+              <span className="inline-flex min-w-[58px] items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700">
+                {leave.requestedDays}
+              </span>
+            </DashboardTableCell>
+            <DashboardTableCell>
+              <p className="line-clamp-2 text-sm leading-6 text-slate-600">{leave.reason}</p>
+            </DashboardTableCell>
+            <DashboardTableCell>
+              <span className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] ${getStatusBadgeClassName(leave.status)}`}>
+                {formatLabel(leave.status)}
+              </span>
+            </DashboardTableCell>
+            <DashboardTableCell>
+              <form action={deleteLeaveRequest}>
+                <input name="leaveId" type="hidden" value={leave.id} />
+                <Button
+                  className="min-w-[90px] rounded-xl border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-none hover:border-slate-300 hover:bg-slate-50"
+                  type="submit"
+                >
+                  Delete
+                </Button>
+              </form>
+            </DashboardTableCell>
+          </tr>
+        ))}
+      </DashboardTable>
     </div>
   );
 }
