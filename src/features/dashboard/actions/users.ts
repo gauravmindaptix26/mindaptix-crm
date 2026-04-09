@@ -5,7 +5,9 @@ import { getCurrentSession } from "@/features/auth/lib/auth-session";
 import { hashPassword } from "@/features/auth/lib/password";
 import { assertAdminOrManager } from "@/features/auth/lib/user-admin";
 import { USER_ROLES, type UserRole } from "@/features/auth/lib/rbac";
+import { ProjectModel } from "@/database/mongodb/models/project";
 import { USER_STATUSES, UserModel, type UserStatus } from "@/database/mongodb/models/user";
+import { UserSessionModel } from "@/database/mongodb/models/user-session";
 import { saveEmployeeDocument } from "@/shared/storage/uploads/employee-documents";
 import type { UserManagementFormState } from "@/features/auth/lib/user-management-form-state";
 import connectDb from "@/database/mongodb/connect";
@@ -106,16 +108,28 @@ export async function createManagedUser(
   };
 }
 
-export async function updateManagedUserAccess(formData: FormData) {
+export async function updateManagedUserAccess(
+  _previousState: UserManagementFormState,
+  formData: FormData,
+): Promise<UserManagementFormState> {
   const session = await getCurrentSession();
-  assertAdminOrManager(session);
 
-  const userId = String(formData.get("userId") ?? "");
+  try {
+    assertAdminOrManager(session);
+  } catch {
+    return { error: "Only admin can update users." };
+  }
+
+  const userId = String(formData.get("userId") ?? "").trim();
   const fullName = String(formData.get("fullName") ?? "").trim();
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const phone = String(formData.get("phone") ?? "").trim();
   const joiningDate = String(formData.get("joiningDate") ?? "").trim();
   const managerId = String(formData.get("managerId") ?? "").trim();
+  const techStack = formData
+    .getAll("techStack")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
   const role = String(formData.get("role") ?? "");
   const status = String(formData.get("status") ?? "");
 
@@ -127,7 +141,10 @@ export async function updateManagedUserAccess(formData: FormData) {
     !isMvpRole(role) ||
     !USER_STATUSES.includes(status as UserStatus)
   ) {
-    throw new Error("Invalid user update payload.");
+    return {
+      error: "Invalid user update payload.",
+      values: { fullName, email, phone, joiningDate, managerId, techStack, role: safeRole(role), status: safeStatus(status) },
+    };
   }
 
   await connectDb();
@@ -135,13 +152,19 @@ export async function updateManagedUserAccess(formData: FormData) {
   const duplicateUser = await UserModel.findOne({ email, _id: { $ne: userId } }).lean();
 
   if (duplicateUser) {
-    throw new Error("Another employee already uses this email.");
+    return {
+      error: "Another employee already uses this email.",
+      values: { fullName, email, phone, joiningDate, managerId, techStack, role: safeRole(role), status: safeStatus(status) },
+    };
   }
 
   const resolvedManagerId = await resolveManagerId(managerId, role as UserRole, userId);
 
   if (resolvedManagerId.error) {
-    throw new Error(resolvedManagerId.error);
+    return {
+      error: resolvedManagerId.error,
+      values: { fullName, email, phone, joiningDate, managerId, techStack, role: safeRole(role), status: safeStatus(status) },
+    };
   }
 
   await UserModel.findByIdAndUpdate(userId, {
@@ -152,7 +175,46 @@ export async function updateManagedUserAccess(formData: FormData) {
     role,
     managerId: resolvedManagerId.value,
     status,
+    techStack,
   });
+
+  revalidatePath("/dashboard/employees");
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/reports");
+
+  return {
+    success: "Account details updated successfully.",
+    values: { fullName, email, phone, joiningDate, managerId: resolvedManagerId.value, techStack, role: role as UserRole, status: status as UserStatus },
+  };
+}
+
+export async function deleteManagedUser(formData: FormData) {
+  const session = await getCurrentSession();
+  assertAdminOrManager(session);
+
+  const userId = String(formData.get("userId") ?? "").trim();
+
+  if (!userId) {
+    throw new Error("User selection is required.");
+  }
+
+  if (session?.user.id === userId) {
+    throw new Error("You cannot delete the currently signed in account.");
+  }
+
+  await connectDb();
+
+  const user = await UserModel.findById(userId, { _id: 1 }).lean();
+
+  if (!user) {
+    throw new Error("Selected user was not found.");
+  }
+
+  await Promise.all([
+    UserModel.findByIdAndDelete(userId),
+    UserSessionModel.deleteMany({ userId }),
+    ProjectModel.updateMany({ assignedUserIds: userId }, { $pull: { assignedUserIds: userId } }),
+  ]);
 
   revalidatePath("/dashboard/employees");
   revalidatePath("/dashboard");

@@ -1,11 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { startTransition, useEffect, useEffectEvent, useMemo, useState, useSyncExternalStore } from "react";
+import { startTransition, useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { logoutUser } from "@/features/auth/actions";
+import { subscribeDashboardSync } from "@/features/dashboard/lib/live-sync";
 import { Button } from "@/shared/ui/button";
 import type { AuthenticatedSession } from "@/features/auth/lib/auth-session";
 import {
@@ -26,11 +27,12 @@ export function DashboardShell({ children, session }: DashboardShellProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const hasHydrated = useSyncExternalStore(subscribeToHydration, getClientHydrationSnapshot, getServerHydrationSnapshot);
   const navItems = useMemo(() => getDashboardNavItemsForRole(session.user.role), [session.user.role]);
+  const lastRefreshAt = useRef(0);
   const desktopSidebarClasses =
     "lg:sticky lg:top-0 lg:h-screen lg:self-start lg:translate-x-0 lg:overflow-y-auto lg:rounded-none lg:border-r lg:border-slate-800/50 lg:shadow-none";
   const activePathname = hasHydrated ? pathname : "";
   const showSidebarOverlay = hasHydrated && isSidebarOpen;
-  const refreshDashboardView = useEffectEvent(() => {
+  const refreshDashboardView = useEffectEvent((force = false) => {
     if (typeof document === "undefined" || document.visibilityState !== "visible") {
       return;
     }
@@ -47,15 +49,22 @@ export function DashboardShell({ children, session }: DashboardShellProps) {
       return;
     }
 
+    const now = Date.now();
+    if (!force && now - lastRefreshAt.current < 1800) {
+      return;
+    }
+
+    lastRefreshAt.current = now;
+
     startTransition(() => {
       router.refresh();
     });
   });
 
   useEffect(() => {
-    const intervalId = window.setInterval(() => {
+    const handleWindowFocus = () => {
       refreshDashboardView();
-    }, 2500);
+    };
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === "visible") {
@@ -63,12 +72,16 @@ export function DashboardShell({ children, session }: DashboardShellProps) {
       }
     };
 
-    window.addEventListener("focus", refreshDashboardView);
+    const unsubscribeDashboardSync = subscribeDashboardSync(() => {
+      refreshDashboardView(true);
+    });
+
+    window.addEventListener("focus", handleWindowFocus);
     document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
-      window.clearInterval(intervalId);
-      window.removeEventListener("focus", refreshDashboardView);
+      unsubscribeDashboardSync();
+      window.removeEventListener("focus", handleWindowFocus);
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { checkInAttendance, checkOutAttendance } from "@/features/dashboard/actions/attendance";
-import { Button } from "@/shared/ui/button";
+import { FormActionButton } from "@/shared/ui/form-action-button";
 import { DashboardTable, DashboardTableCell } from "@/shared/ui/dashboard-table";
 import type { AttendancePageData } from "@/features/dashboard/types";
 
@@ -37,17 +37,18 @@ export function AttendancePanel({ data }: AttendancePanelProps) {
 
               <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <form action={checkInAttendance}>
-                  <Button className="sm:w-auto" type="submit">
+                  <FormActionButton className="sm:w-auto" pendingLabel="Checking in..." type="submit">
                     Check In
-                  </Button>
+                  </FormActionButton>
                 </form>
                 <form action={checkOutAttendance}>
-                  <Button
+                  <FormActionButton
                     className="border border-slate-200 bg-white text-slate-900 shadow-none hover:bg-slate-50 sm:w-auto"
+                    pendingLabel="Checking out..."
                     type="submit"
                   >
                     Check Out
-                  </Button>
+                  </FormActionButton>
                 </form>
               </div>
             </div>

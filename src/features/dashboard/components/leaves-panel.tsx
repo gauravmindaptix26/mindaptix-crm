@@ -4,8 +4,10 @@ import type { ReactNode } from "react";
 import { startTransition, useActionState, useEffect, useEffectEvent } from "react";
 import { useRouter } from "next/navigation";
 import { applyLeaveRequest, deleteLeaveRequest, reviewLeaveRequest } from "@/features/dashboard/actions/leaves";
+import { emitDashboardSync } from "@/features/dashboard/lib/live-sync";
 import { Feedback } from "@/shared/ui/feedback";
 import { Button } from "@/shared/ui/button";
+import { FormActionButton } from "@/shared/ui/form-action-button";
 import { DashboardTable, DashboardTableCell } from "@/shared/ui/dashboard-table";
 import type { LeavePageData } from "@/features/dashboard/types";
 import type { LeaveType } from "@/database/mongodb/models/leave-request";
@@ -44,17 +46,8 @@ export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
   });
 
   useEffect(() => {
-    const timer = window.setInterval(() => {
-      if (!pending) {
-        refreshLeavesView();
-      }
-    }, 2500);
-
-    return () => window.clearInterval(timer);
-  }, [pending]);
-
-  useEffect(() => {
     if (state.success) {
+      emitDashboardSync("leave-applied");
       refreshLeavesView();
     }
   }, [state.success]);
@@ -220,17 +213,21 @@ export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
               </div>
             ) : null}
 
-            <div className={`grid gap-4 ${canReview ? "xl:grid-cols-2" : "grid-cols-1"}`}>
-              {displayedLeaves.length ? (
-                displayedLeaves.map((leave) => (
-                  <LeaveRequestCard canDelete={canApply || canReview} canReview={canReview} key={leave.id} leave={leave} />
-                ))
-              ) : (
-                <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">
-                  No leave requests available yet.
-                </div>
-              )}
-            </div>
+            {isLeadershipReviewView ? (
+              <LeadershipLeaveReviewTable canDelete={canApply || canReview} canReview={canReview} leaves={displayedLeaves} />
+            ) : (
+              <div className={`grid gap-4 ${canReview ? "xl:grid-cols-2" : "grid-cols-1"}`}>
+                {displayedLeaves.length ? (
+                  displayedLeaves.map((leave) => (
+                    <LeaveRequestCard canDelete={canApply || canReview} canReview={canReview} key={leave.id} leave={leave} />
+                  ))
+                ) : (
+                  <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">
+                    No leave requests available yet.
+                  </div>
+                )}
+              </div>
+            )}
             </div>
           </PanelSection>
         )}
@@ -383,13 +380,122 @@ function EmployeeLeaveHistoryTable({ leaves }: { leaves: LeavePageData["leaves"]
             <DashboardTableCell className="whitespace-nowrap">
               <form action={deleteLeaveRequest}>
                 <input name="leaveId" type="hidden" value={leave.id} />
-                <Button
+                <FormActionButton
                   className="rounded-xl border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-none hover:border-slate-300 hover:bg-slate-50"
+                  pendingLabel="Deleting..."
                   type="submit"
                 >
                   Delete
-                </Button>
+                </FormActionButton>
               </form>
+            </DashboardTableCell>
+          </tr>
+        ))}
+      </DashboardTable>
+    </div>
+  );
+}
+
+function LeadershipLeaveReviewTable({
+  canDelete,
+  canReview,
+  leaves,
+}: {
+  canDelete: boolean;
+  canReview: boolean;
+  leaves: LeavePageData["leaves"];
+}) {
+  return (
+    <div className="max-w-full overflow-hidden rounded-[1.7rem] border border-slate-200/80 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] shadow-[0_18px_36px_rgba(15,23,42,0.06)]">
+      <DashboardTable
+        columns={[
+          { label: "Employee", className: "w-[220px]" },
+          { label: "Leave", className: "w-[112px]" },
+          { label: "Dates", className: "w-[190px]" },
+          { label: "Days", className: "w-[84px]" },
+          { label: "Reason" },
+          { label: "Status", className: "w-[132px]" },
+          { label: "Action", className: "w-[260px]" },
+        ]}
+        emptyMessage="No leave requests available yet."
+        fixedLayout
+        hasRows={leaves.length > 0}
+        hideScrollbar
+      >
+        {leaves.map((leave) => (
+          <tr className="bg-white/80 transition hover:bg-sky-50/45" key={leave.id}>
+            <DashboardTableCell>
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-slate-950">{leave.employeeName}</p>
+                <p className="mt-1 truncate text-xs text-slate-500">{leave.employeeEmail}</p>
+              </div>
+            </DashboardTableCell>
+            <DashboardTableCell className="whitespace-nowrap">
+              <span className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] ${getLeaveTypeBadgeClassName(leave.leaveType)}`}>
+                {formatLabel(leave.leaveType)}
+              </span>
+            </DashboardTableCell>
+            <DashboardTableCell>
+              <div className="space-y-1 text-sm font-semibold text-slate-900">
+                <div>{leave.startDate}</div>
+                <div className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-slate-400">to</div>
+                <div>{leave.endDate}</div>
+              </div>
+            </DashboardTableCell>
+            <DashboardTableCell className="whitespace-nowrap">
+              <span className="inline-flex min-w-[58px] items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700">
+                {leave.requestedDays}
+              </span>
+            </DashboardTableCell>
+            <DashboardTableCell>
+              <p className="line-clamp-3 whitespace-normal break-words text-sm leading-6 text-slate-700">{leave.reason}</p>
+            </DashboardTableCell>
+            <DashboardTableCell className="whitespace-nowrap">
+              <span className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] ${getStatusBadgeClassName(leave.status)}`}>
+                {formatLabel(leave.status)}
+              </span>
+            </DashboardTableCell>
+            <DashboardTableCell>
+              <div className="flex flex-wrap gap-2">
+                {canReview && leave.status === "PENDING" ? (
+                  <>
+                    <form action={reviewLeaveRequest}>
+                      <input name="leaveId" type="hidden" value={leave.id} />
+                      <input name="status" type="hidden" value="APPROVED" />
+                      <FormActionButton className="min-w-[94px] rounded-xl px-3 py-2 text-sm shadow-[0_12px_28px_rgba(22,163,74,0.22)]" pendingLabel="Saving..." type="submit">
+                        Approve
+                      </FormActionButton>
+                    </form>
+                    <form action={reviewLeaveRequest}>
+                      <input name="leaveId" type="hidden" value={leave.id} />
+                      <input name="status" type="hidden" value="REJECTED" />
+                      <FormActionButton
+                        className="min-w-[94px] rounded-xl border-rose-200 bg-[linear-gradient(135deg,#fff1f2_0%,#ffe4e6_100%)] px-3 py-2 text-sm text-rose-700 shadow-none hover:border-rose-300 hover:bg-[linear-gradient(135deg,#ffe4e6_0%,#fecdd3_100%)]"
+                        pendingLabel="Saving..."
+                        type="submit"
+                      >
+                        Reject
+                      </FormActionButton>
+                    </form>
+                  </>
+                ) : (
+                  <div className="inline-flex items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                    Processed
+                  </div>
+                )}
+                {canDelete ? (
+                  <form action={deleteLeaveRequest}>
+                    <input name="leaveId" type="hidden" value={leave.id} />
+                    <FormActionButton
+                      className="min-w-[88px] rounded-xl border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-none hover:border-slate-300 hover:bg-slate-50"
+                      pendingLabel="Deleting..."
+                      type="submit"
+                    >
+                      Delete
+                    </FormActionButton>
+                  </form>
+                ) : null}
+              </div>
             </DashboardTableCell>
           </tr>
         ))}
@@ -464,19 +570,20 @@ function LeaveRequestCard({
             <form action={reviewLeaveRequest}>
               <input name="leaveId" type="hidden" value={leave.id} />
               <input name="status" type="hidden" value="APPROVED" />
-              <Button className="min-w-[120px] rounded-xl px-4 py-2.5 text-sm shadow-[0_16px_32px_rgba(22,163,74,0.28)] sm:w-auto" type="submit">
+              <FormActionButton className="min-w-[120px] rounded-xl px-4 py-2.5 text-sm shadow-[0_16px_32px_rgba(22,163,74,0.28)] sm:w-auto" pendingLabel="Saving..." type="submit">
                 Approve
-              </Button>
+              </FormActionButton>
             </form>
             <form action={reviewLeaveRequest}>
               <input name="leaveId" type="hidden" value={leave.id} />
               <input name="status" type="hidden" value="REJECTED" />
-              <Button
+              <FormActionButton
                 className="min-w-[120px] rounded-xl border-rose-200 bg-[linear-gradient(135deg,#fff1f2_0%,#ffe4e6_100%)] px-4 py-2.5 text-sm text-rose-700 shadow-none hover:border-rose-300 hover:bg-[linear-gradient(135deg,#ffe4e6_0%,#fecdd3_100%)] sm:w-auto"
+                pendingLabel="Saving..."
                 type="submit"
               >
                 Reject
-              </Button>
+              </FormActionButton>
             </form>
           </>
         ) : (
@@ -487,12 +594,13 @@ function LeaveRequestCard({
         {canDelete ? (
           <form action={deleteLeaveRequest}>
             <input name="leaveId" type="hidden" value={leave.id} />
-            <Button
+            <FormActionButton
               className="min-w-[120px] rounded-xl border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-none hover:border-slate-300 hover:bg-slate-50 sm:w-auto"
+              pendingLabel="Deleting..."
               type="submit"
             >
               Delete
-            </Button>
+            </FormActionButton>
           </form>
         ) : null}
       </div>

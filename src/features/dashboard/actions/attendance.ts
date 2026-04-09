@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getCurrentSession } from "@/features/auth/lib/auth-session";
 import connectDb from "@/database/mongodb/connect";
 import { AttendanceModel } from "@/database/mongodb/models/attendance";
+import { formatIndiaDateKey } from "@/shared/lib/india-time";
 
 export async function checkInAttendance() {
   const session = await getCurrentSession();
@@ -15,7 +16,7 @@ export async function checkInAttendance() {
   await connectDb();
 
   const now = new Date();
-  const dateKey = now.toISOString().slice(0, 10);
+  const dateKey = formatIndiaDateKey(now);
 
   await AttendanceModel.findOneAndUpdate(
     { userId: session.user.id, dateKey },
@@ -27,7 +28,7 @@ export async function checkInAttendance() {
         status: "PRESENT",
       },
     },
-    { new: true, upsert: true },
+    { returnDocument: "after", upsert: true },
   );
 
   revalidatePath("/dashboard");
@@ -45,7 +46,7 @@ export async function checkOutAttendance() {
   await connectDb();
 
   const now = new Date();
-  const dateKey = now.toISOString().slice(0, 10);
+  const dateKey = formatIndiaDateKey(now);
 
   const existingAttendance = await AttendanceModel.findOne({ userId: session.user.id, dateKey }).lean();
 

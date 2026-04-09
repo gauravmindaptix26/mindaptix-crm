@@ -6,6 +6,7 @@ import { LeaveRequestModel } from "@/database/mongodb/models/leave-request";
 import { ProjectModel } from "@/database/mongodb/models/project";
 import { TaskModel } from "@/database/mongodb/models/task";
 import type { DashboardOverviewData } from "@/features/dashboard/types";
+import { formatIndiaTimeKey } from "@/shared/lib/india-time";
 import {
   buildOverviewCalendarItems,
   buildOverviewPerformanceRows,
@@ -82,7 +83,7 @@ export async function getEmployeeDashboardOverviewData(session: AuthenticatedSes
 }
 
 function getCurrentTimeKey() {
-  return new Date().toISOString().slice(11, 16);
+  return formatIndiaTimeKey(new Date());
 }
 
 

@@ -1,29 +1,24 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useActionState, useMemo, useState } from "react";
-import { assignProjectToUser, createManagedProject, updateManagedProject } from "@/features/dashboard/actions/projects";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { createSalesLead, type SalesLeadFormState } from "@/features/dashboard/actions/sales-leads";
-import { createManagedUser } from "@/features/dashboard/actions/users";
+import { createManagedUser, deleteManagedUser, updateManagedUserAccess } from "@/features/dashboard/actions/users";
+import { emitDashboardSync } from "@/features/dashboard/lib/live-sync";
 import { Feedback } from "@/shared/ui/feedback";
 import { Button } from "@/shared/ui/button";
+import { FormActionButton } from "@/shared/ui/form-action-button";
 import { DashboardTable, DashboardTableCell } from "@/shared/ui/dashboard-table";
 import { INITIAL_USER_MANAGEMENT_STATE } from "@/features/auth/lib/user-management-form-state";
 import type {
-  DsrFeedEntry,
   EmployeeDirectoryEntry,
   EmployeeOption,
-  EmployeeProjectEntry,
   SalesLeadEntry,
   SummaryCard,
 } from "@/features/dashboard/types";
-import type { ProjectPriority, ProjectStatus } from "@/database/mongodb/models/project";
 
 type EmployeesManagementPanelProps = {
-  managerOptions: EmployeeOption[];
-  projects: EmployeeProjectEntry[];
   readOnly?: boolean;
-  recentUpdates: DsrFeedEntry[];
   salesLeadRows: SalesLeadEntry[];
   salesOnly?: boolean;
   salesOptions: EmployeeOption[];
@@ -31,29 +26,10 @@ type EmployeesManagementPanelProps = {
   summaryCards: SummaryCard[];
   users: EmployeeDirectoryEntry[];
 };
-
-type ProjectFormState = {
-  error?: string;
-  success?: string;
-  values?: {
-    assignedUserIds?: string[];
-    id?: string;
-    name?: string;
-    summary?: string;
-    status?: ProjectStatus;
-    priority?: ProjectPriority;
-    dueDate?: string;
-  };
-};
-
-const INITIAL_PROJECT_STATE: ProjectFormState = {};
 const INITIAL_SALES_LEAD_STATE: SalesLeadFormState = {};
 
 export function EmployeesManagementPanel({
-  managerOptions,
-  projects,
   readOnly = false,
-  recentUpdates,
   salesLeadRows,
   salesOnly = false,
   salesOptions,
@@ -62,16 +38,11 @@ export function EmployeesManagementPanel({
   users,
 }: EmployeesManagementPanelProps) {
   const [userState, createUserAction, userPending] = useActionState(createManagedUser, INITIAL_USER_MANAGEMENT_STATE);
-  const [projectState, createProjectAction, projectPending] = useActionState(createManagedProject, INITIAL_PROJECT_STATE);
-  const [updateProjectState, updateProjectAction, updateProjectPending] = useActionState(updateManagedProject, INITIAL_PROJECT_STATE);
+  const [updateUserState, updateUserAction, updateUserPending] = useActionState(updateManagedUserAccess, INITIAL_USER_MANAGEMENT_STATE);
   const [salesLeadState, createSalesLeadAction, salesLeadPending] = useActionState(createSalesLead, INITIAL_SALES_LEAD_STATE);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [selectedUserId, setSelectedUserId] = useState(users[0]?.id ?? "");
-  const [selectedProjectId, setSelectedProjectId] = useState(projects[0]?.id ?? "");
-
-  const projectNameById = new Map(projects.map((project) => [project.id, project.name]));
-  const projectEmployeeOptions = users.filter((user) => user.role === "EMPLOYEE" && user.status === "ACTIVE");
   const salesLabelById = Object.fromEntries(salesOptions.map((salesUser) => [salesUser.id, salesUser.label]));
   const totalTrackedBudget = salesLeadRows.reduce((sum, row) => sum + row.budget, 0);
   const totalPitchedValue = salesLeadRows.reduce((sum, row) => sum + row.pitchedPrice, 0);
@@ -98,11 +69,27 @@ export function EmployeesManagementPanel({
   }, [roleFilter, searchTerm, users]);
 
   const selectedUser = filteredUsers.find((user) => user.id === selectedUserId) ?? filteredUsers[0] ?? null;
-  const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? projects[0] ?? null;
   const canManageWorkspace = !readOnly && !salesOnly;
   const shouldShowDirectory = !salesOnly;
-  const shouldShowSalesTracker = canManageWorkspace || salesOnly;
-  const shouldShowRecentDsr = canManageWorkspace;
+  const shouldShowSalesTracker = salesOnly;
+
+  useEffect(() => {
+    if (userState.success) {
+      emitDashboardSync("user-created");
+    }
+  }, [userState.success]);
+
+  useEffect(() => {
+    if (updateUserState.success) {
+      emitDashboardSync("user-updated");
+    }
+  }, [updateUserState.success]);
+
+  useEffect(() => {
+    if (salesLeadState.success) {
+      emitDashboardSync("sales-lead-created");
+    }
+  }, [salesLeadState.success]);
 
   return (
     <div className="space-y-6 px-5 py-5 sm:px-7 sm:py-6">
@@ -113,13 +100,13 @@ export function EmployeesManagementPanel({
       </section>
 
       {canManageWorkspace ? (
-        <section className="grid gap-6 xl:grid-cols-2">
+        <section>
           <PanelSection
-            description="Add employee, admin, or sales accounts with phone, joining date, reporting admin, and a basic onboarding document."
+            description="Add employee, admin, or sales accounts with phone, joining date, tech focus, and a basic onboarding document."
             eyebrow="Employee Management"
             title="Create Team Account"
           >
-            <form action={createUserAction} autoComplete="off" className="mt-6 space-y-4">
+            <form action={createUserAction} autoComplete="off" className="mt-6 space-y-5">
               <input autoComplete="username" className="hidden" name="fakeUsername" tabIndex={-1} type="text" />
               <input autoComplete="new-password" className="hidden" name="fakePassword" tabIndex={-1} type="password" />
 
@@ -150,7 +137,17 @@ export function EmployeesManagementPanel({
                 />
               </div>
 
-              <Field autoComplete="new-password" label="Temporary Password" name="password" placeholder="Create a strong password" type="password" />
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(260px,0.45fr)]">
+                <Field autoComplete="new-password" label="Temporary Password" name="password" placeholder="Create a strong password" type="password" />
+                <SelectField
+                  defaultValue={userState.values?.techStack?.[0] ?? ""}
+                  includePlaceholder
+                  label="Tech Focus"
+                  name="techStack"
+                  options={salesTechnologyOptions}
+                  placeholder="No tech focus"
+                />
+              </div>
 
               <div className="grid gap-4 md:grid-cols-2">
                 <SelectField
@@ -168,25 +165,6 @@ export function EmployeesManagementPanel({
                 />
               </div>
 
-              <SelectField
-                defaultValue={userState.values?.managerId ?? ""}
-                includePlaceholder
-                label="Reporting Admin"
-                labels={Object.fromEntries(managerOptions.map((manager) => [manager.id, manager.label]))}
-                name="managerId"
-                options={managerOptions.map((manager) => manager.id)}
-                placeholder="No admin"
-              />
-
-              <MultiSelectField
-                defaultValue={userState.values?.techStack ?? []}
-                helperText="Optional: employee ya sales account ka primary tech focus select karo."
-                label="Tech Focus"
-                name="techStack"
-                options={salesTechnologyOptions}
-                required={false}
-              />
-
               <FileField label="Document Upload" name="document" />
 
               <Button className="mt-2 min-w-44 sm:w-auto" disabled={userPending} type="submit">
@@ -194,204 +172,7 @@ export function EmployeesManagementPanel({
               </Button>
             </form>
           </PanelSection>
-
-          <PanelSection
-            description="Create project, fill delivery information, and assign one or more employees from the same form."
-            eyebrow="Project Assignment"
-            title="Create Project"
-          >
-            <form action={createProjectAction} className="mt-6 space-y-4">
-              {projectState.error ? <Feedback>{projectState.error}</Feedback> : null}
-              {projectState.success ? <Feedback tone="success">{projectState.success}</Feedback> : null}
-
-              <Field defaultValue={projectState.values?.name} label="Project Name" name="name" placeholder="Enter project name" />
-              <TextAreaField
-                defaultValue={projectState.values?.summary}
-                label="Project Summary"
-                name="summary"
-                placeholder="Write a short project summary"
-              />
-
-              <div className="grid gap-4 md:grid-cols-3">
-                <SelectField
-                  defaultValue={projectState.values?.status ?? "PLANNING"}
-                  label="Status"
-                  labels={{
-                    PLANNING: "Planning",
-                    IN_PROGRESS: "In Progress",
-                    ON_HOLD: "On Hold",
-                    COMPLETED: "Completed",
-                  }}
-                  name="status"
-                  options={["PLANNING", "IN_PROGRESS", "ON_HOLD", "COMPLETED"]}
-                />
-                <SelectField
-                  defaultValue={projectState.values?.priority ?? "MEDIUM"}
-                  label="Priority"
-                  labels={{ LOW: "Low", MEDIUM: "Medium", HIGH: "High" }}
-                  name="priority"
-                  options={["LOW", "MEDIUM", "HIGH"]}
-                />
-                <Field
-                  defaultValue={projectState.values?.dueDate}
-                  fallbackTodayForDate
-                  label="Due Date"
-                  name="dueDate"
-                  placeholder="Select due date"
-                  type="date"
-                />
-              </div>
-
-              <MultiSelectField
-                defaultValue={projectState.values?.assignedUserIds ?? []}
-                helperText="Ek ya multiple employees select karo. Create hote hi unke dashboard aur DSR view me project visible ho jayega."
-                label="Assign Employees"
-                name="assignedUserIds"
-                options={projectEmployeeOptions.map((user) => user.id)}
-                optionLabels={Object.fromEntries(projectEmployeeOptions.map((user) => [user.id, `${user.fullName} (${user.email})`]))}
-                required={false}
-              />
-
-              <Button className="mt-2 min-w-44 sm:w-auto" disabled={projectPending} type="submit">
-                {projectPending ? "Creating..." : "Create Project"}
-              </Button>
-            </form>
-          </PanelSection>
         </section>
-      ) : null}
-
-      {canManageWorkspace ? (
-        <PanelSection
-          description="Every created project stays here with assigned employees, delivery date, and quick edit access."
-          eyebrow="Project Register"
-          title="Manage Projects"
-        >
-          <div className="mt-6 space-y-6">
-            <DashboardTable
-              columns={[
-                { label: "Project", className: "min-w-[220px]" },
-                { label: "Employees", className: "min-w-[220px]" },
-                { label: "Status", className: "min-w-[120px]" },
-                { label: "Priority", className: "min-w-[110px]" },
-                { label: "Due Date", className: "min-w-[120px]" },
-                { label: "Action", className: "min-w-[110px]" },
-              ]}
-              emptyMessage="Projects will appear here after the first project is created."
-              hasRows={projects.length > 0}
-              hideScrollbar
-            >
-              {projects.map((project) => (
-                <tr className={selectedProject?.id === project.id ? "bg-blue-50/50" : ""} key={project.id}>
-                  <DashboardTableCell>
-                    <p className="font-semibold text-slate-900">{project.name}</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">{project.summary}</p>
-                  </DashboardTableCell>
-                  <DashboardTableCell>
-                    <div className="flex flex-wrap gap-2">
-                      {project.assignedUserNames.length ? (
-                        project.assignedUserNames.map((employeeName) => (
-                          <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700" key={`${project.id}-${employeeName}`}>
-                            {employeeName}
-                          </span>
-                        ))
-                      ) : (
-                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">No employee</span>
-                      )}
-                    </div>
-                  </DashboardTableCell>
-                  <DashboardTableCell>
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600">
-                      {formatLabel(project.status)}
-                    </span>
-                  </DashboardTableCell>
-                  <DashboardTableCell>
-                    <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
-                      {formatLabel(project.priority)}
-                    </span>
-                  </DashboardTableCell>
-                  <DashboardTableCell>{project.dueDate || "Not set"}</DashboardTableCell>
-                  <DashboardTableCell>
-                    <Button className="sm:w-auto" onClick={() => setSelectedProjectId(project.id)} type="button">
-                      Edit
-                    </Button>
-                  </DashboardTableCell>
-                </tr>
-              ))}
-            </DashboardTable>
-
-            {selectedProject ? (
-              <section className="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-5">
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-blue-500">Project Editor</p>
-                    <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{selectedProject.name}</h3>
-                    <p className="mt-2 text-sm text-slate-500">Project ko update karo, employee add/remove karo, aur delivery information edit karo.</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      {formatLabel(selectedProject.status)}
-                    </span>
-                    <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
-                      {formatLabel(selectedProject.priority)}
-                    </span>
-                  </div>
-                </div>
-
-                <form action={updateProjectAction} className="mt-6 space-y-4">
-                  {updateProjectState.error ? <Feedback>{updateProjectState.error}</Feedback> : null}
-                  {updateProjectState.success ? <Feedback tone="success">{updateProjectState.success}</Feedback> : null}
-
-                  <input name="projectId" type="hidden" value={selectedProject.id} />
-
-                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_220px]">
-                    <Field defaultValue={selectedProject.name} label="Project Name" name="name" placeholder="Enter project name" />
-                    <Field
-                      defaultValue={selectedProject.dueDate}
-                      fallbackTodayForDate
-                      label="Due Date"
-                      name="dueDate"
-                      placeholder="Select due date"
-                      type="date"
-                    />
-                  </div>
-
-                  <TextAreaField defaultValue={selectedProject.summary} label="Project Summary" name="summary" placeholder="Write a short project summary" />
-
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <SelectField
-                      defaultValue={selectedProject.status}
-                      label="Status"
-                      labels={{ PLANNING: "Planning", IN_PROGRESS: "In Progress", ON_HOLD: "On Hold", COMPLETED: "Completed" }}
-                      name="status"
-                      options={["PLANNING", "IN_PROGRESS", "ON_HOLD", "COMPLETED"]}
-                    />
-                    <SelectField
-                      defaultValue={selectedProject.priority}
-                      label="Priority"
-                      labels={{ LOW: "Low", MEDIUM: "Medium", HIGH: "High" }}
-                      name="priority"
-                      options={["LOW", "MEDIUM", "HIGH"]}
-                    />
-                  </div>
-
-                  <MultiSelectField
-                    defaultValue={selectedProject.assignedUserIds}
-                    helperText="Selected employees ko project notification milegi aur project unke dashboard/DSR me visible rahega."
-                    label="Assigned Employees"
-                    name="assignedUserIds"
-                    options={projectEmployeeOptions.map((user) => user.id)}
-                    optionLabels={Object.fromEntries(projectEmployeeOptions.map((user) => [user.id, `${user.fullName} (${user.email})`]))}
-                    required={false}
-                  />
-
-                  <Button className="min-w-44 sm:w-auto" disabled={updateProjectPending} type="submit">
-                    {updateProjectPending ? "Saving..." : "Update Project"}
-                  </Button>
-                </form>
-              </section>
-            ) : null}
-          </div>
-        </PanelSection>
       ) : null}
 
       {shouldShowDirectory ? (
@@ -399,7 +180,7 @@ export function EmployeesManagementPanel({
         description={
           readOnly
             ? ""
-            : "Select one employee from the list, then review name, email, role, status, reporting admin, and projects from a single editor."
+            : "Select one employee from the list, then review name, email, role, status, tech focus, and account details from a single editor."
         }
         eyebrow={readOnly ? "Workforce Overview" : "Directory"}
         hideHeader={readOnly}
@@ -568,8 +349,8 @@ export function EmployeesManagementPanel({
                 { label: "Employee" },
                 { label: "Role" },
                 { label: "Status" },
-                { label: "Admin" },
-                { label: "Projects" },
+                { label: "Tech Focus" },
+                { label: "Today" },
                 { label: "Action" },
               ]}
               emptyMessage="No employees match the current search or filter."
@@ -583,10 +364,20 @@ export function EmployeesManagementPanel({
                   </DashboardTableCell>
                   <DashboardTableCell>{roleLabel(user.role)}</DashboardTableCell>
                   <DashboardTableCell>{user.status}</DashboardTableCell>
-                  <DashboardTableCell>{user.managerName || "No admin"}</DashboardTableCell>
                   <DashboardTableCell>
-                    {user.projectIds.length ? user.projectIds.map((projectId) => projectNameById.get(projectId) ?? "Assigned Project").join(", ") : "No project assigned"}
+                    <div className="flex flex-wrap gap-2">
+                      {user.techStack.length ? (
+                        user.techStack.map((tech) => (
+                          <span className="rounded-full border border-emerald-100 bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700" key={`${user.id}-tech-${tech}`}>
+                            {tech}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">Not set</span>
+                      )}
+                    </div>
                   </DashboardTableCell>
+                  <DashboardTableCell>{user.todayStatus}</DashboardTableCell>
                   <DashboardTableCell>
                     <Button className="sm:w-auto" onClick={() => setSelectedUserId(user.id)} type="button">
                       Edit
@@ -598,80 +389,76 @@ export function EmployeesManagementPanel({
 
             {selectedUser ? (
               <section className="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-5" key={selectedUser.id}>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-                    {roleLabel(selectedUser.role)}
-                  </span>
-                  {selectedUser.documentUrl ? (
-                    <a
-                      className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700"
-                      href={selectedUser.documentUrl}
-                      rel="noreferrer"
-                      target="_blank"
-                    >
-                      {selectedUser.documentName || "Open Document"}
-                    </a>
-                  ) : null}
-                </div>
-
-                <h3 className="mt-4 text-2xl font-semibold tracking-tight text-slate-950">Review Account for {selectedUser.fullName}</h3>
-                <p className="mt-2 text-sm text-slate-500">
-                  {selectedUser.role === "EMPLOYEE"
-                    ? "Employee selected hai. Neeche se project assign kar sakte ho."
-                    : selectedUser.role === "SALES"
-                      ? "Sales account selected hai. Is user ke client records neeche sales table me visible rahenge."
-                      : "Admin account details yahan quick review ke liye dikh rahe hain."}
-                </p>
-
-                <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   <ReadOnlyField label="Employee Name" value={selectedUser.fullName} />
                   <ReadOnlyField label="Email" value={selectedUser.email} />
-                  <ReadOnlyField
-                    label={selectedUser.role === "MANAGER" ? "Access Scope" : "Reporting Admin"}
-                    value={selectedUser.role === "MANAGER" ? "Company Operations" : selectedUser.managerName || "Not assigned"}
-                  />
+                  <ReadOnlyField label="Account Status" value={selectedUser.status} />
                   <ReadOnlyField label="Tech Focus" value={selectedUser.techStack.length ? selectedUser.techStack.join(", ") : "Not set"} />
+                  <ReadOnlyField label="Today Status" value={selectedUser.todayStatus} />
+                  <ReadOnlyField label="Phone" value={selectedUser.phone || "Phone not added"} />
                 </div>
 
-                <div className="mt-4 flex flex-wrap gap-2">
-                  {selectedUser.projectIds.length ? (
-                    selectedUser.projectIds.map((projectId) => (
-                      <span
-                        className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700"
-                        key={projectId}
-                      >
-                        {projectNameById.get(projectId) ?? "Assigned Project"}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">
-                      No project assigned
-                    </span>
-                  )}
-                </div>
-
-                {selectedUser.role === "EMPLOYEE" && projects.length ? (
-                  <div className="mt-5 rounded-[1.4rem] border border-slate-200 bg-white p-4">
-                    <form action={assignProjectToUser} className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_120px]">
+                <div className="mt-6 rounded-[1.5rem] border border-slate-200 bg-white p-4">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div>
+                      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.2em] text-blue-500">Account Controls</p>
+                      <h4 className="mt-2 text-xl font-semibold tracking-tight text-slate-950">Edit Or Remove Account</h4>
+                    </div>
+                    <form action={deleteManagedUser}>
                       <input name="userId" type="hidden" value={selectedUser.id} />
-                      <SelectField
-                        defaultValue=""
-                        includePlaceholder
-                        label="Assign Project"
-                        labels={Object.fromEntries(projects.map((project) => [project.id, project.name]))}
-                        name="projectId"
-                        options={projects.map((project) => project.id)}
-                        required
-                      />
-                      <div className="flex items-end">
-                        <Button className="sm:w-auto" type="submit">
-                          Assign
-                        </Button>
-                      </div>
+                      <FormActionButton className="border border-rose-200 bg-rose-50 text-rose-700 shadow-none hover:bg-rose-100 sm:w-auto" pendingLabel="Deleting..." type="submit" variant="secondary">
+                        Delete Account
+                      </FormActionButton>
                     </form>
                   </div>
-                ) : null}
 
+                  <form action={updateUserAction} className="mt-5 space-y-4">
+                    {updateUserState.error ? <Feedback>{updateUserState.error}</Feedback> : null}
+                    {updateUserState.success ? <Feedback tone="success">{updateUserState.success}</Feedback> : null}
+
+                    <input name="userId" type="hidden" value={selectedUser.id} />
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <Field defaultValue={selectedUser.fullName} label="Full Name" name="fullName" placeholder="Enter full name" />
+                      <Field defaultValue={selectedUser.email} label="Email Address" name="email" placeholder="Enter email" type="email" />
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-2">
+                      <Field defaultValue={selectedUser.phone} label="Phone" name="phone" placeholder="Enter phone number" />
+                      <Field
+                        defaultValue={selectedUser.joiningDate}
+                        fallbackTodayForDate
+                        label="Joining Date"
+                        name="joiningDate"
+                        placeholder="Select joining date"
+                        type="date"
+                      />
+                    </div>
+
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <SelectField
+                        defaultValue={selectedUser.role}
+                        label="Role"
+                        labels={{ EMPLOYEE: "Employee", MANAGER: "Admin", SALES: "Sales" }}
+                        name="role"
+                        options={["EMPLOYEE", "MANAGER", "SALES"]}
+                      />
+                      <SelectField defaultValue={selectedUser.status} label="Status" name="status" options={["ACTIVE", "SUSPENDED"]} />
+                      <SelectField
+                        defaultValue={selectedUser.techStack[0] ?? ""}
+                        includePlaceholder
+                        label="Tech Focus"
+                        name="techStack"
+                        options={salesTechnologyOptions}
+                        placeholder="No tech focus"
+                      />
+                    </div>
+
+                    <Button className="min-w-44 sm:w-auto" disabled={updateUserPending} type="submit">
+                      {updateUserPending ? "Saving..." : "Update Account"}
+                    </Button>
+                  </form>
+                </div>
               </section>
             ) : null}
           </div>
@@ -906,45 +693,6 @@ export function EmployeesManagementPanel({
       </PanelSection>
         ) : null}
 
-      {shouldShowRecentDsr ? (
-      <PanelSection
-        description={
-          readOnly
-            ? "Latest DSR feed from employees visible in your team scope."
-            : "Latest employee DSR feed for quick admin review without leaving employee management."
-        }
-        eyebrow="Recent DSR"
-        title="Daily Status Reports"
-      >
-        <div className="mt-6 grid gap-4 xl:grid-cols-2">
-          {recentUpdates.length ? (
-            recentUpdates.map((update) => (
-              <article className="rounded-[1.5rem] border border-slate-100 bg-slate-50 p-5" key={update.id}>
-                <div className="flex flex-wrap items-center gap-2">
-                  <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-                    {update.employeeName}
-                  </span>
-                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
-                    {update.projectName}
-                  </span>
-                </div>
-                <p className="mt-3 text-base font-semibold text-slate-950">{update.summary}</p>
-                <p className="mt-2 text-sm text-slate-500">
-                  {update.workDate} - {update.employeeEmail}
-                </p>
-                <p className="mt-4 text-sm leading-6 text-slate-600">{update.accomplishments}</p>
-                {update.blockers ? <p className="mt-3 text-sm text-amber-700">Blockers: {update.blockers}</p> : null}
-                {update.nextPlan ? <p className="mt-2 text-sm text-slate-500">Next: {update.nextPlan}</p> : null}
-              </article>
-            ))
-          ) : (
-            <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500 xl:col-span-2">
-              DSR entries will appear here after employees start submitting daily work reports.
-            </div>
-          )}
-        </div>
-      </PanelSection>
-      ) : null}
     </div>
   );
 }
@@ -1050,21 +798,6 @@ function Field({ autoComplete, defaultValue, fallbackTodayForDate = false, label
         placeholder={placeholder}
         required={type !== "date" || name !== "joiningDate"}
         type={type}
-      />
-    </label>
-  );
-}
-
-function TextAreaField({ defaultValue, label, name, placeholder }: Omit<FieldProps, "type" | "fallbackTodayForDate">) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
-      <textarea
-        className="min-h-28 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none"
-        defaultValue={defaultValue}
-        name={name}
-        placeholder={placeholder}
-        required
       />
     </label>
   );
@@ -1203,14 +936,6 @@ function formatCurrency(value: number) {
     currency: "INR",
     maximumFractionDigits: 0,
   }).format(value);
-}
-
-function formatLabel(value: string) {
-  return value
-    .toLowerCase()
-    .split("_")
-    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
-    .join(" ");
 }
 
 function roleLabel(role: EmployeeDirectoryEntry["role"]) {

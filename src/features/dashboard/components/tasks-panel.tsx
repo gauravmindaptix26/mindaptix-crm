@@ -1,10 +1,12 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { addTaskComment, createTask, updateTaskStatus } from "@/features/dashboard/actions/tasks";
+import { emitDashboardSync } from "@/features/dashboard/lib/live-sync";
 import { Feedback } from "@/shared/ui/feedback";
 import { Button } from "@/shared/ui/button";
+import { FormActionButton } from "@/shared/ui/form-action-button";
 import { DashboardTable, DashboardTableCell } from "@/shared/ui/dashboard-table";
 import type { TaskEntry, TaskPageData } from "@/features/dashboard/types";
 import type { TaskPriority } from "@/database/mongodb/models/task";
@@ -59,6 +61,12 @@ export function TasksPanel({ canAssign, data, readOnly }: TasksPanelProps) {
         .includes(query);
     });
   }, [data.tasks, labelFilter, priorityFilter, searchTerm, statusFilter]);
+
+  useEffect(() => {
+    if (state.success) {
+      emitDashboardSync("task-created");
+    }
+  }, [state.success]);
 
   return (
     <div className="space-y-6 px-5 py-5 sm:px-7 sm:py-6">
@@ -290,9 +298,9 @@ function TaskRow({ readOnly, task }: { readOnly: boolean; task: TaskEntry }) {
               name="status"
               options={["PENDING", "IN_PROGRESS", "COMPLETED"]}
             />
-            <Button className="sm:w-auto" type="submit">
+            <FormActionButton className="sm:w-auto" pendingLabel="Saving..." type="submit">
               Save
-            </Button>
+            </FormActionButton>
           </form>
         )}
       </DashboardTableCell>
@@ -340,9 +348,9 @@ function TaskRow({ readOnly, task }: { readOnly: boolean; task: TaskEntry }) {
               required
             />
             <div className="flex items-end">
-              <Button className="sm:w-auto" type="submit">
+              <FormActionButton className="sm:w-auto" pendingLabel="Sending..." type="submit">
                 Comment
-              </Button>
+              </FormActionButton>
             </div>
           </form>
         )}

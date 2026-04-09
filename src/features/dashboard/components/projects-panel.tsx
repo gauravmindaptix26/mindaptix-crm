@@ -4,8 +4,10 @@ import type { ReactNode } from "react";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { createManagedProject, deleteManagedProject, updateManagedProject } from "@/features/dashboard/actions/projects";
+import { emitDashboardSync } from "@/features/dashboard/lib/live-sync";
 import { Feedback } from "@/shared/ui/feedback";
 import { Button } from "@/shared/ui/button";
+import { FormActionButton } from "@/shared/ui/form-action-button";
 import { DashboardTable, DashboardTableCell } from "@/shared/ui/dashboard-table";
 import type { ProjectsPageData } from "@/features/dashboard/types";
 import type { ProjectPriority, ProjectStatus } from "@/database/mongodb/models/project";
@@ -53,6 +55,18 @@ export function ProjectsPanel({ data }: ProjectsPanelProps) {
       window.clearTimeout(timeoutId);
     };
   }, [createState.success]);
+
+  useEffect(() => {
+    if (createState.success) {
+      emitDashboardSync("project-created");
+    }
+  }, [createState.success]);
+
+  useEffect(() => {
+    if (updateState.success) {
+      emitDashboardSync("project-updated");
+    }
+  }, [updateState.success]);
 
   const employeeLabels = useMemo(
     () => Object.fromEntries(data.employeeOptions.map((employee) => [employee.id, employee.label])),
@@ -203,9 +217,9 @@ export function ProjectsPanel({ data }: ProjectsPanelProps) {
                   </span>
                   <form action={deleteManagedProject}>
                     <input name="projectId" type="hidden" value={selectedProject.id} />
-                    <Button className="sm:w-auto" type="submit" variant="secondary">
+                    <FormActionButton className="sm:w-auto" pendingLabel="Deleting..." type="submit" variant="secondary">
                       Delete Project
-                    </Button>
+                    </FormActionButton>
                   </form>
                 </div>
               </div>

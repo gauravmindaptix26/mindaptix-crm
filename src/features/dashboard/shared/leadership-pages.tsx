@@ -29,10 +29,7 @@ export async function renderLeadershipDashboardPage(page: DashboardPageKey, sess
       const data = await getEmployeesPageData(session);
       return (
         <EmployeesManagementPanel
-          managerOptions={data.managerOptions}
-          projects={data.projects}
           readOnly={isReadOnlySuperAdmin}
-          recentUpdates={data.recentUpdates}
           salesLeadRows={data.salesLeadRows}
           salesOptions={data.salesOptions}
           salesTechnologyOptions={data.salesTechnologyOptions}

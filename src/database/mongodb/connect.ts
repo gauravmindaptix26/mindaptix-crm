@@ -30,7 +30,7 @@ export async function connectDb() {
   }
 
   if (!cached.promise) {
-    cached.promise = mongoose.connect(resolvedMongoDbUrl, {
+    cached.promise = mongoose.connect(resolvedMongoDbUrl,{
       dbName: "MindaptixCRM",
     });
   }

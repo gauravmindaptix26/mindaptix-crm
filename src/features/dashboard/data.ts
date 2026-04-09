@@ -11,6 +11,7 @@ import { SALES_TECH_OPTIONS, SalesLeadModel } from "@/database/mongodb/models/sa
 import { SettingModel } from "@/database/mongodb/models/setting";
 import { TASK_LABELS, TaskModel } from "@/database/mongodb/models/task";
 import { UserModel } from "@/database/mongodb/models/user";
+import { formatIndiaDateKey, formatIndiaDateTime, formatIndiaTimeKey } from "@/shared/lib/india-time";
 import type {
   AttendanceMonthlyRow,
   AttendancePageData,
@@ -1343,11 +1344,11 @@ function inScope(userIds: string[]) {
 }
 
 function getTodayDate() {
-  return new Date().toISOString().slice(0, 10);
+  return formatIndiaDateKey(new Date());
 }
 
 function getCurrentTimeKey() {
-  return new Date().toISOString().slice(11, 16);
+  return formatIndiaTimeKey(new Date());
 }
 
 function addDaysToDate(dateKey: string, days: number) {
@@ -1397,7 +1398,7 @@ function formatDate(value: Date | null | undefined) {
   }
 
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+  return Number.isNaN(date.getTime()) ? "" : formatIndiaDateKey(date);
 }
 
 function formatDateTime(value: Date | null | undefined) {
@@ -1411,7 +1412,7 @@ function formatDateTime(value: Date | null | undefined) {
     return "Not marked";
   }
 
-  return `${date.toISOString().slice(0, 10)} ${date.toISOString().slice(11, 16)}`;
+  return formatIndiaDateTime(date);
 }
 
 function formatLabel(value: string) {

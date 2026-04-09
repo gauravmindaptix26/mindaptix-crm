@@ -1,8 +1,9 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useActionState } from "react";
+import { useActionState, useEffect } from "react";
 import { submitDailyUpdate } from "@/features/dashboard/actions/dsr";
+import { emitDashboardSync } from "@/features/dashboard/lib/live-sync";
 import { Feedback } from "@/shared/ui/feedback";
 import { Button } from "@/shared/ui/button";
 import { DashboardTable, DashboardTableCell } from "@/shared/ui/dashboard-table";
@@ -30,6 +31,12 @@ export function DsrPanel({ data, simplifiedReview = false }: DsrPanelProps) {
 
 function EmployeeDsrPanel({ data }: { data: Extract<DsrPageData, { mode: "employee" }> }) {
   const [state, formAction, pending] = useActionState(submitDailyUpdate, INITIAL_DSR_STATE);
+
+  useEffect(() => {
+    if (state.success) {
+      emitDashboardSync("dsr-submitted");
+    }
+  }, [state.success]);
 
   return (
     <div className="space-y-6 px-5 py-5 sm:px-7 sm:py-6">
@@ -165,60 +172,16 @@ function DsrReviewPanel({
           <OverviewCard detail="Employees still missing their DSR for today." label="Missing Today" value={String(data.missingEmployees.length)} />
         </section>
 
-        <section className="grid gap-6 xl:grid-cols-2">
+        <section className="space-y-6">
           <PanelSection description="Employees who have already filled today's DSR." eyebrow="Submitted Today" title="Filled DSR">
-            <div className="mt-6 space-y-3">
-              {submittedEmployees.length ? (
-                submittedEmployees.map((employee) => (
-                  <article
-                    className="flex items-center gap-4 rounded-[1.5rem] border border-emerald-100 bg-[linear-gradient(135deg,#ecfdf5_0%,#ffffff_100%)] px-4 py-4 shadow-[0_12px_28px_rgba(16,185,129,0.08)]"
-                    key={employee.id}
-                  >
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-sm font-semibold uppercase tracking-[0.18em] text-white">
-                      {getInitials(employee.employeeName)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-base font-semibold text-slate-950">{employee.employeeName}</p>
-                      <p className="mt-1 truncate text-sm text-slate-500">{employee.employeeEmail}</p>
-                    </div>
-                    <div className="ml-auto rounded-full border border-emerald-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-700">
-                      Submitted
-                    </div>
-                  </article>
-                ))
-              ) : (
-                <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 px-5 py-4 text-sm leading-6 text-slate-500">
-                  No employee has submitted DSR today yet.
-                </div>
-              )}
+            <div className="mt-5">
+              <SubmittedEmployeesTable employees={submittedEmployees} />
             </div>
           </PanelSection>
 
           <PanelSection description="Employees who still need to fill today's DSR." eyebrow="Missing Today" title="Pending DSR">
-            <div className="mt-6 space-y-3">
-              {data.missingEmployees.length ? (
-                data.missingEmployees.map((employee) => (
-                  <article
-                    className="flex items-center gap-4 rounded-[1.5rem] border border-amber-100 bg-[linear-gradient(135deg,#fff7ed_0%,#ffffff_100%)] px-4 py-4 shadow-[0_12px_28px_rgba(245,158,11,0.08)]"
-                    key={employee.id}
-                  >
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-sm font-semibold uppercase tracking-[0.18em] text-white">
-                      {getInitials(employee.employeeName)}
-                    </div>
-                    <div className="min-w-0">
-                      <p className="truncate text-base font-semibold text-slate-950">{employee.employeeName}</p>
-                      <p className="mt-1 truncate text-sm text-slate-500">{employee.employeeEmail}</p>
-                    </div>
-                    <div className="ml-auto rounded-full border border-amber-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
-                      Pending
-                    </div>
-                  </article>
-                ))
-              ) : (
-                <div className="rounded-[1.5rem] border border-dashed border-emerald-200 bg-emerald-50 px-5 py-4 text-sm leading-6 text-emerald-700">
-                  Everyone in this view has already submitted DSR today.
-                </div>
-              )}
+            <div className="mt-5">
+              <MissingDsrTable employees={data.missingEmployees} />
             </div>
           </PanelSection>
         </section>
@@ -236,29 +199,10 @@ function DsrReviewPanel({
 
       <AlertStrip tone={data.reminderMessage.includes("after 7 PM") ? "amber" : "blue"}>{data.reminderMessage}</AlertStrip>
 
-      <section className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
+      <section className="space-y-6">
         <PanelSection description="Employees who still need to fill their daily status report today." eyebrow="Missing Today" title="Pending DSR">
-          <div className="mt-6 space-y-3">
-            {data.missingEmployees.length ? (
-              data.missingEmployees.map((employee) => (
-                <article
-                  className="flex items-center gap-4 rounded-[1.4rem] border border-slate-100 bg-slate-50 px-4 py-4 shadow-[0_10px_30px_rgba(15,23,42,0.05)]"
-                  key={employee.id}
-                >
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-100 via-orange-50 to-white text-sm font-semibold uppercase tracking-[0.18em] text-amber-700">
-                    {getInitials(employee.employeeName)}
-                  </div>
-                  <div className="min-w-0">
-                    <p className="truncate text-base font-semibold text-slate-950">{employee.employeeName}</p>
-                    <p className="mt-1 truncate text-sm text-slate-500">{employee.employeeEmail}</p>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <div className="rounded-[1.5rem] border border-dashed border-emerald-200 bg-emerald-50 px-5 py-4 text-sm leading-6 text-emerald-700">
-                Everyone in this view has already submitted DSR today.
-              </div>
-            )}
+          <div className="mt-5">
+            <MissingDsrTable employees={data.missingEmployees} />
           </div>
         </PanelSection>
 
@@ -267,53 +211,8 @@ function DsrReviewPanel({
           eyebrow="Review Feed"
           title="Submitted Today"
         >
-          <div className="mt-6 space-y-4">
-            {data.updates.length ? (
-              data.updates.map((update) => (
-                <article
-                  className="rounded-[1.6rem] border border-slate-100 bg-gradient-to-br from-white via-slate-50/70 to-blue-50/40 p-5 shadow-[0_18px_35px_rgba(15,23,42,0.05)]"
-                  key={update.id}
-                >
-                  <div className="flex flex-col gap-4 border-b border-slate-100 pb-4 lg:flex-row lg:items-start lg:justify-between">
-                    <div className="flex min-w-0 items-center gap-4">
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[1.2rem] bg-gradient-to-br from-slate-900 to-blue-600 text-base font-semibold uppercase tracking-[0.16em] text-white">
-                        {getInitials(update.employeeName)}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-lg font-semibold text-slate-950">{update.employeeName}</p>
-                        <p className="mt-1 truncate text-sm text-slate-500">{update.employeeEmail}</p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      <Badge tone="blue">{update.projectName}</Badge>
-                      <Badge tone="emerald">{update.workDate}</Badge>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
-                    <div className="space-y-4">
-                      <InfoCard label="Summary">{update.summary}</InfoCard>
-                      <InfoCard label="Completed Work">{update.accomplishments}</InfoCard>
-                    </div>
-                    <div className="space-y-4">
-                      <InfoCard label="Blockers">{update.blockers || "No blockers reported."}</InfoCard>
-                      <InfoCard label="Next Plan">{update.nextPlan || "Next plan not added."}</InfoCard>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 rounded-[1.25rem] border border-slate-100 bg-white/80 px-4 py-4">
-                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Proof Files</p>
-                    <div className="mt-3">
-                      {update.attachments.length ? <AttachmentList items={update.attachments} /> : <span className="text-sm text-slate-400">No files attached.</span>}
-                    </div>
-                  </div>
-                </article>
-              ))
-            ) : (
-              <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 px-5 py-4 text-sm leading-6 text-slate-500">
-                No employee has submitted DSR today yet.
-              </div>
-            )}
+          <div className="mt-5">
+            <SubmittedDsrTable updates={data.updates} />
           </div>
         </PanelSection>
       </section>
@@ -395,15 +294,6 @@ function Badge({ children, tone }: { children: ReactNode; tone: "amber" | "blue"
   return <span className={`rounded-full border px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] ${styles[tone]}`}>{children}</span>;
 }
 
-function InfoCard({ children, label }: { children: ReactNode; label: string }) {
-  return (
-    <div className="rounded-[1.25rem] border border-slate-100 bg-white/80 px-4 py-4">
-      <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-slate-400">{label}</p>
-      <div className="mt-3 text-sm leading-6 text-slate-700">{children}</div>
-    </div>
-  );
-}
-
 function AttachmentList({ items }: { items: Array<{ name: string; url: string }> }) {
   return (
     <div className="flex flex-wrap gap-2">
@@ -418,6 +308,133 @@ function AttachmentList({ items }: { items: Array<{ name: string; url: string }>
           {item.name}
         </a>
       ))}
+    </div>
+  );
+}
+
+function MissingDsrTable({ employees }: { employees: Array<{ id: string; employeeName: string; employeeEmail: string }> }) {
+  return (
+    <div className="max-w-full overflow-hidden rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,#fefefe_0%,#fbfdff_100%)] shadow-[0_16px_34px_rgba(15,23,42,0.05)]">
+      <DashboardTable
+        columns={[
+          { label: "Employee", className: "w-[220px]" },
+          { label: "Email" },
+          { label: "Status", className: "w-[120px]" },
+        ]}
+        emptyMessage="Everyone in this view has already submitted DSR today."
+        fixedLayout
+        hasRows={employees.length > 0}
+        hideScrollbar
+      >
+        {employees.map((employee) => (
+          <tr className="bg-white/80 transition hover:bg-amber-50/45" key={employee.id}>
+            <DashboardTableCell>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-amber-100 to-orange-50 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+                  {getInitials(employee.employeeName)}
+                </div>
+                <p className="truncate font-semibold text-slate-950">{employee.employeeName}</p>
+              </div>
+            </DashboardTableCell>
+            <DashboardTableCell className="truncate text-sm text-slate-600">{employee.employeeEmail}</DashboardTableCell>
+            <DashboardTableCell className="whitespace-nowrap">
+              <span className="inline-flex rounded-full border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-amber-700">
+                Pending
+              </span>
+            </DashboardTableCell>
+          </tr>
+        ))}
+      </DashboardTable>
+    </div>
+  );
+}
+
+function SubmittedEmployeesTable({ employees }: { employees: Array<{ id: string; employeeName: string; employeeEmail: string }> }) {
+  return (
+    <div className="max-w-full overflow-hidden rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,#fefefe_0%,#fbfdff_100%)] shadow-[0_16px_34px_rgba(15,23,42,0.05)]">
+      <DashboardTable
+        columns={[
+          { label: "Employee", className: "w-[220px]" },
+          { label: "Email" },
+          { label: "Status", className: "w-[120px]" },
+        ]}
+        emptyMessage="No employee has submitted DSR today yet."
+        fixedLayout
+        hasRows={employees.length > 0}
+        hideScrollbar
+      >
+        {employees.map((employee) => (
+          <tr className="bg-white/80 transition hover:bg-emerald-50/45" key={employee.id}>
+            <DashboardTableCell>
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-xs font-semibold uppercase tracking-[0.18em] text-white">
+                  {getInitials(employee.employeeName)}
+                </div>
+                <p className="truncate font-semibold text-slate-950">{employee.employeeName}</p>
+              </div>
+            </DashboardTableCell>
+            <DashboardTableCell className="truncate text-sm text-slate-600">{employee.employeeEmail}</DashboardTableCell>
+            <DashboardTableCell className="whitespace-nowrap">
+              <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                Submitted
+              </span>
+            </DashboardTableCell>
+          </tr>
+        ))}
+      </DashboardTable>
+    </div>
+  );
+}
+
+function SubmittedDsrTable({ updates }: { updates: Extract<DsrPageData, { mode: "review" }>["updates"] }) {
+  return (
+    <div className="max-w-full overflow-hidden rounded-[1.6rem] border border-slate-200/80 bg-[linear-gradient(180deg,#fefefe_0%,#fbfdff_100%)] shadow-[0_16px_34px_rgba(15,23,42,0.05)]">
+      <DashboardTable
+        columns={[
+          { label: "Employee", className: "w-[210px]" },
+          { label: "Project", className: "w-[120px]" },
+          { label: "Date", className: "w-[126px]" },
+          { label: "Summary", className: "w-[180px]" },
+          { label: "Completed Work" },
+          { label: "Blockers" },
+          { label: "Next Plan" },
+          { label: "Files", className: "w-[150px]" },
+        ]}
+        emptyMessage="No employee has submitted DSR today yet."
+        fixedLayout
+        hasRows={updates.length > 0}
+        hideScrollbar
+      >
+        {updates.map((update) => (
+          <tr className="bg-white/80 transition hover:bg-sky-50/45" key={update.id}>
+            <DashboardTableCell>
+              <div className="min-w-0">
+                <p className="truncate font-semibold text-slate-950">{update.employeeName}</p>
+                <p className="mt-1 truncate text-xs text-slate-500">{update.employeeEmail}</p>
+              </div>
+            </DashboardTableCell>
+            <DashboardTableCell className="whitespace-nowrap">
+              <Badge tone="blue">{update.projectName}</Badge>
+            </DashboardTableCell>
+            <DashboardTableCell className="whitespace-nowrap text-sm font-medium text-slate-700">{update.workDate}</DashboardTableCell>
+            <DashboardTableCell>
+              <p className="line-clamp-3 whitespace-normal break-words text-sm font-semibold leading-6 text-slate-900">{update.summary}</p>
+            </DashboardTableCell>
+            <DashboardTableCell>
+              <p className="line-clamp-4 whitespace-normal break-words text-sm leading-6 text-slate-700">{update.accomplishments}</p>
+            </DashboardTableCell>
+            <DashboardTableCell>
+              <p className="line-clamp-4 whitespace-normal break-words text-sm leading-6 text-slate-700">{update.blockers || "No blockers"}</p>
+            </DashboardTableCell>
+            <DashboardTableCell>
+              <p className="line-clamp-4 whitespace-normal break-words text-sm leading-6 text-slate-700">{update.nextPlan || "Not added"}</p>
+            </DashboardTableCell>
+            <DashboardTableCell>
+              {update.attachments.length ? <AttachmentList items={update.attachments} /> : <span className="text-sm text-slate-400">No files</span>}
+            </DashboardTableCell>
+          </tr>
+        ))}
+      </DashboardTable>
     </div>
   );
 }

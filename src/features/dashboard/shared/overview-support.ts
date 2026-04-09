@@ -5,6 +5,7 @@ import { AttendanceModel } from "@/database/mongodb/models/attendance";
 import { DailyUpdateModel } from "@/database/mongodb/models/daily-update";
 import { TaskModel } from "@/database/mongodb/models/task";
 import { UserModel } from "@/database/mongodb/models/user";
+import { formatIndiaDateKey, formatIndiaDateTime } from "@/shared/lib/india-time";
 import type {
   AttendanceTrendPoint,
   DashboardNotificationItem,
@@ -251,7 +252,7 @@ export function mapNotifications(
 }
 
 export function getTodayDate() {
-  return new Date().toISOString().slice(0, 10);
+  return formatIndiaDateKey(new Date());
 }
 
 export function addDaysToDate(dateKey: string, days: number) {
@@ -266,7 +267,7 @@ export function formatDate(value: Date | null | undefined) {
   }
 
   const date = new Date(value);
-  return Number.isNaN(date.getTime()) ? "" : date.toISOString().slice(0, 10);
+  return Number.isNaN(date.getTime()) ? "" : formatIndiaDateKey(date);
 }
 
 export function formatDateTime(value: Date | null | undefined) {
@@ -280,7 +281,7 @@ export function formatDateTime(value: Date | null | undefined) {
     return "Not marked";
   }
 
-  return `${date.toISOString().slice(0, 10)} ${date.toISOString().slice(11, 16)}`;
+  return formatIndiaDateTime(date);
 }
 
 export function formatLabel(value: string) {
