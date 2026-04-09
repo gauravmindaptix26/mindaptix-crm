@@ -4,6 +4,7 @@ import { AttendancePanel } from "@/features/dashboard/components/attendance-pane
 import { DsrPanel } from "@/features/dashboard/components/dsr-panel";
 import { EmployeesManagementPanel } from "@/features/dashboard/components/employees-management-panel";
 import { LeavesPanel } from "@/features/dashboard/components/leaves-panel";
+import { ProjectsPanel } from "@/features/dashboard/components/projects-panel";
 import { ReportsPanel } from "@/features/dashboard/components/reports-panel";
 import { SettingsPanel } from "@/features/dashboard/components/settings-panel";
 import { TasksPanel } from "@/features/dashboard/components/tasks-panel";
@@ -13,6 +14,7 @@ import {
   getDsrPageData,
   getEmployeesPageData,
   getLeavesPageData,
+  getProjectsPageData,
   getReportsPageData,
   getSettingsPageData,
   getTasksPageData,
@@ -42,6 +44,10 @@ export async function renderLeadershipDashboardPage(page: DashboardPageKey, sess
     case "attendance": {
       const data = await getAttendancePageData(session);
       return <AttendancePanel data={data} />;
+    }
+    case "projects": {
+      const data = await getProjectsPageData(session);
+      return <ProjectsPanel data={data} />;
     }
     case "leaves": {
       const data = await getLeavesPageData(session);

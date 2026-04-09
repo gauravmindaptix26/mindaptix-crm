@@ -68,6 +68,62 @@ export function TasksPanel({ canAssign, data, readOnly }: TasksPanelProps) {
         ))}
       </section>
 
+      {!canAssign && data.assignedProjects.length ? (
+        <PanelSection
+          description="Ye projects admin/manager ne tumhe assign kiye hain. Inhi projects ke hisaab se task aur DSR work update kar sakte ho."
+          eyebrow="Assigned Projects"
+          title="My Project Assignments"
+        >
+          <div className="mt-6">
+            <DashboardTable
+              columns={[
+                { label: "Project", className: "min-w-[220px]" },
+                { label: "Status", className: "min-w-[120px]" },
+                { label: "Priority", className: "min-w-[120px]" },
+                { label: "Tech Stack", className: "min-w-[180px]" },
+                { label: "Due Date", className: "min-w-[120px]" },
+              ]}
+              emptyMessage="Assigned projects will appear here."
+              hasRows={data.assignedProjects.length > 0}
+              hideScrollbar
+            >
+              {data.assignedProjects.map((project) => (
+                <tr key={project.id}>
+                  <DashboardTableCell className="min-w-[220px]">
+                    <p className="font-semibold text-slate-900">{project.name}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">{project.summary}</p>
+                  </DashboardTableCell>
+                  <DashboardTableCell className="min-w-[120px]">
+                    <Badge tone={project.status === "COMPLETED" ? "emerald" : project.status === "IN_PROGRESS" ? "amber" : "slate"}>
+                      {project.status.replaceAll("_", " ")}
+                    </Badge>
+                  </DashboardTableCell>
+                  <DashboardTableCell className="min-w-[120px]">
+                    <Badge tone={project.priority === "HIGH" ? "red" : project.priority === "MEDIUM" ? "amber" : "emerald"}>
+                      {project.priority}
+                    </Badge>
+                  </DashboardTableCell>
+                  <DashboardTableCell className="min-w-[180px]">
+                    <div className="flex flex-wrap gap-2">
+                      {project.techStack.length ? (
+                        project.techStack.map((tech) => (
+                          <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700" key={`${project.id}-${tech}`}>
+                            {tech}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="text-sm text-slate-400">No tech stack</span>
+                      )}
+                    </div>
+                  </DashboardTableCell>
+                  <DashboardTableCell className="min-w-[120px]">{project.dueDate || "Not set"}</DashboardTableCell>
+                </tr>
+              ))}
+            </DashboardTable>
+          </div>
+        </PanelSection>
+      ) : null}
+
       <section className={`grid gap-6 ${canAssign ? "xl:grid-cols-[440px_minmax(0,1fr)]" : ""}`}>
         {canAssign ? (
           <PanelSection
@@ -130,11 +186,17 @@ export function TasksPanel({ canAssign, data, readOnly }: TasksPanelProps) {
               ? "Read-only company task board for status, labels, files, and team discussion."
               : canAssign
                 ? "Track assigned work, overdue tasks, comments, and updates from one board."
-                : "Track your assigned work, upload proof, and update status from one board."
+                : "Track your assigned work, upload proof, and update status from one board. Projects upar dikhte hain, aur unke andar ke actual work items yahan tasks me aate hain."
           }
           eyebrow="Task Board"
           title="Tasks"
         >
+          {!canAssign ? (
+            <div className="mt-6 rounded-[1.3rem] border border-blue-100 bg-blue-50/70 px-4 py-4 text-sm leading-6 text-slate-600">
+              <span className="font-semibold text-slate-900">Projects aur Tasks alag hain.</span> Assigned projects upar dikhte hain, aur admin/manager ke diye hue actual work items niche task board me milte hain.
+            </div>
+          ) : null}
+
           <div className="mt-6 grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_repeat(3,minmax(0,0.8fr))]">
             <SearchField onChange={setSearchTerm} value={searchTerm} />
             <SelectFilter label="Status" onChange={setStatusFilter} options={["ALL", "PENDING", "IN_PROGRESS", "COMPLETED"]} value={statusFilter} />

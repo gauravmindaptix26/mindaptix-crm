@@ -21,6 +21,7 @@ import type {
   LeaveEmployeeSummary,
   LeavePageData,
   PerformanceScoreRow,
+  ProjectsPageData,
   ReportsPageData,
   SettingsPageData,
   TaskPageData,
@@ -54,6 +55,7 @@ export type {
   LeavePageData,
   LeaveTrendPoint,
   PerformanceScoreRow,
+  ProjectsPageData,
   ReportsPageData,
   SalesLeadEntry,
   SettingsPageData,
@@ -325,7 +327,12 @@ export async function getEmployeesPageData(session?: AuthenticatedSession): Prom
   const employeeIds = users.filter((user) => user.role === "EMPLOYEE" && user.status === "ACTIVE").map((user) => user._id.toString());
 
   const [projects, updates, managerUsers, salesUsers, salesLeads, todayAttendance, todayLeaves, userMap, managerMap] = await Promise.all([
-    ProjectModel.find(hasAdminLikeAccess ? {} : isSalesSelfView ? { assignedUserIds: session.user.id } : { _id: { $in: [] } }, { name: 1, summary: 1, status: 1, priority: 1, dueDate: 1, assignedUserIds: 1 }).sort({ createdAt: -1 }).lean(),
+    ProjectModel.find(
+      hasAdminLikeAccess ? {} : isSalesSelfView ? { assignedUserIds: session.user.id } : { _id: { $in: [] } },
+      { name: 1, summary: 1, status: 1, priority: 1, dueDate: 1, techStack: 1, assignedUserIds: 1, createdByUserId: 1 },
+    )
+      .sort({ createdAt: -1 })
+      .lean(),
     DailyUpdateModel.find(updatesFilter, { userId: 1, projectId: 1, workDate: 1, summary: 1, accomplishments: 1, blockers: 1, nextPlan: 1, attachments: 1 }).sort({ createdAt: -1 }).limit(8).lean(),
     UserModel.find({ role: "MANAGER", status: "ACTIVE" }, { fullName: 1, email: 1 }).sort({ fullName: 1 }).lean(),
     UserModel.find({ role: "SALES", status: "ACTIVE" }, { fullName: 1, email: 1 }).sort({ fullName: 1 }).lean(),
@@ -419,7 +426,10 @@ export async function getEmployeesPageData(session?: AuthenticatedSession): Prom
       status: project.status,
       priority: project.priority,
       dueDate: formatDate(project.dueDate),
+      techStack: resolveProjectTechStack(project),
       assignedUserIds: project.assignedUserIds ?? [],
+      assignedUserNames: (project.assignedUserIds ?? []).map((userId) => userMap.get(userId)?.fullName ?? "Assigned employee"),
+      createdByUserId: project.createdByUserId ?? "",
     })),
     salesLeadRows: salesLeads.map((lead) => ({
       id: lead._id.toString(),
@@ -450,6 +460,64 @@ export async function getEmployeesPageData(session?: AuthenticatedSession): Prom
       nextPlan: update.nextPlan ?? "",
       attachments: mapAttachments(update.attachments),
     })),
+  };
+}
+
+export async function getProjectsPageData(session: AuthenticatedSession): Promise<ProjectsPageData> {
+  await connectDb();
+
+  const hasLeadershipAccess = session.user.role === "SUPER_ADMIN" || session.user.role === "MANAGER";
+
+  if (!hasLeadershipAccess) {
+    return {
+      summaryCards: [],
+      projects: [],
+      employeeOptions: [],
+      technologyOptions: [...SALES_TECH_OPTIONS],
+    };
+  }
+
+  const [projects, employees] = await Promise.all([
+    ProjectModel.find(
+      {},
+      { name: 1, summary: 1, status: 1, priority: 1, dueDate: 1, techStack: 1, assignedUserIds: 1, createdByUserId: 1 },
+    )
+      .sort({ updatedAt: -1 })
+      .lean(),
+    UserModel.find({ role: "EMPLOYEE", status: "ACTIVE" }, { fullName: 1, email: 1 }).sort({ fullName: 1 }).lean(),
+  ]);
+
+  const employeeMap = new Map(employees.map((employee) => [employee._id.toString(), employee]));
+  const uniqueAssignedEmployeeIds = new Set(projects.flatMap((project) => project.assignedUserIds ?? []));
+  const inProgressProjects = projects.filter((project) => project.status === "IN_PROGRESS").length;
+  const completedProjects = projects.filter((project) => project.status === "COMPLETED").length;
+  const plannedProjects = projects.filter((project) => project.status === "PLANNING" || project.status === "ON_HOLD").length;
+
+  return {
+    summaryCards: [
+      { label: "Total Projects", value: String(projects.length), detail: "Project records currently maintained in the workspace." },
+      { label: "In Progress", value: String(inProgressProjects), detail: "Projects currently under active execution." },
+      { label: "Completed", value: String(completedProjects), detail: "Projects already marked complete." },
+      { label: "Planned / Hold", value: String(plannedProjects), detail: "Projects still waiting to start or paused." },
+      { label: "Assigned Employees", value: String(uniqueAssignedEmployeeIds.size), detail: "Employees currently mapped to at least one project." },
+    ],
+    projects: projects.map((project) => ({
+      id: project._id.toString(),
+      name: project.name,
+      summary: project.summary,
+      status: project.status,
+      priority: project.priority,
+      dueDate: formatDate(project.dueDate),
+      techStack: resolveProjectTechStack(project),
+      assignedUserIds: project.assignedUserIds ?? [],
+      assignedUserNames: (project.assignedUserIds ?? []).map((userId) => employeeMap.get(userId)?.fullName ?? "Assigned employee"),
+      createdByUserId: project.createdByUserId ?? "",
+    })),
+    employeeOptions: employees.map((employee) => ({
+      id: employee._id.toString(),
+      label: `${employee.fullName} (${employee.email})`,
+    })),
+    technologyOptions: [...SALES_TECH_OPTIONS],
   };
 }
 
@@ -632,10 +700,15 @@ export async function getTasksPageData(session: AuthenticatedSession): Promise<T
       : { $or: [{ assignedUserId: session.user.id }, { assignedByUserId: session.user.id }] };
   const employeeFilter = { role: "EMPLOYEE", status: "ACTIVE" };
 
-  const [tasks, employees, users] = await Promise.all([
+  const [tasks, employees, users, assignedProjects] = await Promise.all([
     TaskModel.find(taskFilter).sort({ createdAt: -1 }).lean(),
     UserModel.find(employeeFilter, { fullName: 1, email: 1 }).sort({ fullName: 1 }).lean(),
     UserModel.find({}, { fullName: 1 }).lean(),
+    hasAdminLikeAccess
+      ? Promise.resolve([])
+      : ProjectModel.find({ assignedUserIds: session.user.id }, { name: 1, summary: 1, status: 1, priority: 1, dueDate: 1, techStack: 1 })
+          .sort({ createdAt: -1 })
+          .lean(),
   ]);
 
   const userMap = new Map(users.map((user) => [user._id.toString(), user.fullName]));
@@ -650,6 +723,15 @@ export async function getTasksPageData(session: AuthenticatedSession): Promise<T
       { label: "High Priority", value: String(highPriorityCount), detail: "Important tasks requiring closer follow-up." },
     ],
     tasks: tasks.map((task) => mapTaskRow(task, userMap)),
+    assignedProjects: assignedProjects.map((project) => ({
+      id: project._id.toString(),
+      name: project.name,
+      summary: project.summary,
+      status: project.status,
+      priority: project.priority,
+      dueDate: formatDate(project.dueDate),
+      techStack: resolveProjectTechStack(project),
+    })),
     employeeOptions: employees.map((employee) => ({
       id: employee._id.toString(),
       label: `${employee.fullName} (${employee.email})`,
@@ -666,7 +748,7 @@ export async function getDsrPageData(session: AuthenticatedSession): Promise<Dsr
 
   if (session.user.role === "EMPLOYEE") {
     const [projects, updates] = await Promise.all([
-      ProjectModel.find({ _id: { $in: session.user.projectIds } }, { name: 1, summary: 1, status: 1, priority: 1, dueDate: 1 }).sort({ createdAt: -1 }).lean(),
+      ProjectModel.find({ assignedUserIds: session.user.id }, { name: 1, summary: 1, status: 1, priority: 1, dueDate: 1, techStack: 1 }).sort({ createdAt: -1 }).lean(),
       DailyUpdateModel.find({ userId: session.user.id }).sort({ createdAt: -1 }).limit(10).lean(),
     ]);
     const projectMap = new Map(projects.map((project) => [project._id.toString(), project.name]));
@@ -681,12 +763,13 @@ export async function getDsrPageData(session: AuthenticatedSession): Promise<Dsr
       ],
       projects: projects.map((project) => ({
         id: project._id.toString(),
-        name: project.name,
-        summary: project.summary,
-        status: project.status,
-        priority: project.priority,
-        dueDate: formatDate(project.dueDate),
-      })),
+          name: project.name,
+          summary: project.summary,
+          status: project.status,
+          priority: project.priority,
+          dueDate: formatDate(project.dueDate),
+          techStack: resolveProjectTechStack(project),
+        })),
       updates: updates.map((update) => ({
         id: update._id.toString(),
         workDate: update.workDate,
@@ -1508,6 +1591,58 @@ function formatMonthYearLabel(monthKey: string) {
   return Number.isNaN(date.getTime())
     ? monthKey
     : date.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+}
+
+function resolveProjectTechStack(project: { name?: string; summary?: string; techStack?: string[] }) {
+  const explicitTechStack = Array.from(new Set((project.techStack ?? []).filter(Boolean)));
+
+  if (explicitTechStack.length) {
+    return explicitTechStack;
+  }
+
+  const text = `${project.name ?? ""} ${project.summary ?? ""}`.toLowerCase();
+
+  return SALES_TECH_OPTIONS.filter((option) => {
+    const normalized = option.toLowerCase();
+
+    if (normalized === "next.js") {
+      return text.includes("next.js") || text.includes("nextjs");
+    }
+
+    if (normalized === "node.js") {
+      return text.includes("node.js") || text.includes("nodejs");
+    }
+
+    if (normalized === "ui/ux design") {
+      return text.includes("ui/ux") || text.includes("ui ux") || text.includes("ux design");
+    }
+
+    if (normalized === "react native") {
+      return text.includes("react native");
+    }
+
+    if (normalized === "ai integration") {
+      return text.includes("ai integration") || text.includes("artificial intelligence");
+    }
+
+    if (normalized === "custom crm") {
+      return text.includes("custom crm") || text.includes(" crm");
+    }
+
+    if (normalized === "google ads") {
+      return text.includes("google ads");
+    }
+
+    if (normalized === "meta ads") {
+      return text.includes("meta ads") || text.includes("facebook ads");
+    }
+
+    if (normalized === "mern") {
+      return text.includes("mern");
+    }
+
+    return text.includes(normalized);
+  });
 }
 
 

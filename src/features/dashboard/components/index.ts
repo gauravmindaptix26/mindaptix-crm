@@ -5,6 +5,7 @@ export * from "@/features/dashboard/components/dsr-panel";
 export * from "@/features/dashboard/components/employee-dashboard-overview";
 export * from "@/features/dashboard/components/employees-management-panel";
 export * from "@/features/dashboard/components/leaves-panel";
+export * from "@/features/dashboard/components/projects-panel";
 export * from "@/features/dashboard/components/reports-panel";
 export * from "@/features/dashboard/components/settings-panel";
 export * from "@/features/dashboard/components/tasks-panel";

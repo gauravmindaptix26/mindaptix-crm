@@ -55,17 +55,17 @@ function EmployeeDsrPanel({ data }: { data: Extract<DsrPageData, { mode: "employ
         </div>
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.9fr)]">
+      <section className="space-y-6">
         <PanelSection
-          description="Fill your daily status report with work done, blockers, tomorrow’s plan, and proof files when needed."
+          description="Fill your daily status report with work done, blockers, tomorrow's plan, and proof files when needed."
           eyebrow="Daily Report"
           title="Submit DSR"
         >
-          <form action={formAction} className="mt-6 space-y-4">
+          <form action={formAction} className="mt-6 max-w-[1120px] space-y-4">
             {state.error ? <Feedback>{state.error}</Feedback> : null}
             {state.success ? <Feedback tone="success">{state.success}</Feedback> : null}
 
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className="grid gap-4 xl:grid-cols-[220px_minmax(240px,320px)]">
               <Field defaultValue={state.values?.workDate} label="Work Date" name="workDate" placeholder="Select date" type="date" />
               <SelectField
                 defaultValue={state.values?.projectId ?? ""}
@@ -79,15 +79,21 @@ function EmployeeDsrPanel({ data }: { data: Extract<DsrPageData, { mode: "employ
             </div>
 
             <Field defaultValue={state.values?.summary} label="What did you do today?" name="summary" placeholder="Write a short heading" />
-            <TextAreaField
-              defaultValue={state.values?.accomplishments}
-              label="Completed Work"
-              name="accomplishments"
-              placeholder="Explain today’s completed work"
-            />
-            <TextAreaField defaultValue={state.values?.blockers} label="Blockers" name="blockers" placeholder="Mention blockers or dependencies" />
-            <TextAreaField defaultValue={state.values?.nextPlan} label="Tomorrow Plan" name="nextPlan" placeholder="Write what you will do next" />
-            <FileField label="Proof Files" multiple name="attachments" />
+
+            <div className="grid gap-4 xl:grid-cols-2">
+              <TextAreaField
+                defaultValue={state.values?.accomplishments}
+                label="Completed Work"
+                name="accomplishments"
+                placeholder="Explain today's completed work"
+              />
+              <TextAreaField defaultValue={state.values?.blockers} label="Blockers" name="blockers" placeholder="Mention blockers or dependencies" />
+            </div>
+
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px] xl:items-start">
+              <TextAreaField defaultValue={state.values?.nextPlan} label="Tomorrow Plan" name="nextPlan" placeholder="Write what you will do next" />
+              <FileField label="Proof Files" multiple name="attachments" />
+            </div>
 
             <Button className="sm:w-auto" disabled={pending} type="submit">
               {pending ? "Submitting..." : "Submit DSR"}
@@ -96,32 +102,38 @@ function EmployeeDsrPanel({ data }: { data: Extract<DsrPageData, { mode: "employ
         </PanelSection>
 
         <PanelSection
-          description="Your recent DSR entries stay visible here so you can check what you reported earlier."
+          description="Your recent DSR entries stay visible here so you can quickly check what you reported earlier."
           eyebrow="Recent DSR"
           title="History"
         >
           <div className="mt-6">
             <DashboardTable
               columns={[
-                { label: "Date" },
-                { label: "Project" },
-                { label: "Summary" },
+                { label: "Date", className: "w-[120px]" },
+                { label: "Project", className: "w-[150px]" },
+                { label: "Summary", className: "w-[190px]" },
                 { label: "Completed Work" },
-                { label: "Blockers / Next" },
-                { label: "Files" },
+                { label: "Blockers" },
+                { label: "Next Plan" },
+                { label: "Files", className: "w-[150px]" },
               ]}
-              emptyMessage="No DSR entries yet. Submit your first report from the form on the left."
+              emptyMessage="No DSR entries yet. Submit your first report from the form above."
+              fixedLayout
               hasRows={data.updates.length > 0}
             >
               {data.updates.map((update) => (
-                <tr key={update.id}>
-                  <DashboardTableCell>{update.workDate}</DashboardTableCell>
-                  <DashboardTableCell>{update.projectName}</DashboardTableCell>
+                <tr className="bg-white/80 transition hover:bg-sky-50/45" key={update.id}>
+                  <DashboardTableCell className="whitespace-nowrap font-medium text-slate-700">{update.workDate}</DashboardTableCell>
+                  <DashboardTableCell className="font-medium text-slate-700">{update.projectName}</DashboardTableCell>
                   <DashboardTableCell className="font-semibold text-slate-900">{update.summary}</DashboardTableCell>
-                  <DashboardTableCell className="min-w-[220px]">{update.accomplishments}</DashboardTableCell>
-                  <DashboardTableCell className="min-w-[220px]">
-                    <p>{update.blockers || "No blockers"}</p>
-                    <p className="mt-2 text-xs text-slate-500">Next: {update.nextPlan || "Not added"}</p>
+                  <DashboardTableCell>
+                    <p className="line-clamp-4 whitespace-normal break-words text-sm leading-6 text-slate-700">{update.accomplishments}</p>
+                  </DashboardTableCell>
+                  <DashboardTableCell>
+                    <p className="line-clamp-4 whitespace-normal break-words text-sm leading-6 text-slate-700">{update.blockers || "No blockers"}</p>
+                  </DashboardTableCell>
+                  <DashboardTableCell>
+                    <p className="line-clamp-4 whitespace-normal break-words text-sm leading-6 text-slate-700">{update.nextPlan || "Not added"}</p>
                   </DashboardTableCell>
                   <DashboardTableCell>
                     {update.attachments.length ? <AttachmentList items={update.attachments} /> : <span className="text-sm text-slate-400">No files</span>}
@@ -154,11 +166,7 @@ function DsrReviewPanel({
         </section>
 
         <section className="grid gap-6 xl:grid-cols-2">
-          <PanelSection
-            description="Employees who have already filled today’s DSR."
-            eyebrow="Submitted Today"
-            title="Filled DSR"
-          >
+          <PanelSection description="Employees who have already filled today's DSR." eyebrow="Submitted Today" title="Filled DSR">
             <div className="mt-6 space-y-3">
               {submittedEmployees.length ? (
                 submittedEmployees.map((employee) => (
@@ -186,11 +194,7 @@ function DsrReviewPanel({
             </div>
           </PanelSection>
 
-          <PanelSection
-            description="Employees who still need to fill today’s DSR."
-            eyebrow="Missing Today"
-            title="Pending DSR"
-          >
+          <PanelSection description="Employees who still need to fill today's DSR." eyebrow="Missing Today" title="Pending DSR">
             <div className="mt-6 space-y-3">
               {data.missingEmployees.length ? (
                 data.missingEmployees.map((employee) => (
@@ -233,11 +237,7 @@ function DsrReviewPanel({
       <AlertStrip tone={data.reminderMessage.includes("after 7 PM") ? "amber" : "blue"}>{data.reminderMessage}</AlertStrip>
 
       <section className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <PanelSection
-          description="Employees who still need to fill their daily status report today."
-          eyebrow="Missing Today"
-          title="Pending DSR"
-        >
+        <PanelSection description="Employees who still need to fill their daily status report today." eyebrow="Missing Today" title="Pending DSR">
           <div className="mt-6 space-y-3">
             {data.missingEmployees.length ? (
               data.missingEmployees.map((employee) => (
@@ -304,11 +304,7 @@ function DsrReviewPanel({
                   <div className="mt-4 rounded-[1.25rem] border border-slate-100 bg-white/80 px-4 py-4">
                     <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-slate-400">Proof Files</p>
                     <div className="mt-3">
-                      {update.attachments.length ? (
-                        <AttachmentList items={update.attachments} />
-                      ) : (
-                        <span className="text-sm text-slate-400">No files attached.</span>
-                      )}
+                      {update.attachments.length ? <AttachmentList items={update.attachments} /> : <span className="text-sm text-slate-400">No files attached.</span>}
                     </div>
                   </div>
                 </article>
@@ -375,6 +371,11 @@ function ProjectCard({ project }: { project: EmployeeProjectView }) {
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone="blue">{formatLabel(project.status)}</Badge>
         <Badge tone={project.priority === "HIGH" ? "red" : project.priority === "MEDIUM" ? "amber" : "emerald"}>{formatLabel(project.priority)}</Badge>
+        {project.techStack.slice(0, 2).map((tech) => (
+          <Badge key={`${project.id}-${tech}`} tone="emerald">
+            {tech}
+          </Badge>
+        ))}
       </div>
       <h3 className="mt-3 text-lg font-semibold text-slate-950">{project.name}</h3>
       <p className="mt-3 text-sm leading-6 text-slate-600">{project.summary}</p>
@@ -458,7 +459,7 @@ function TextAreaField({ defaultValue, label, name, placeholder }: Omit<FieldPro
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
       <textarea
-        className="min-h-28 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none"
+        className="min-h-32 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none"
         defaultValue={defaultValue}
         name={name}
         placeholder={placeholder}
@@ -530,6 +531,3 @@ function getInitials(value: string) {
     .join("")
     .toUpperCase();
 }
-
-
-

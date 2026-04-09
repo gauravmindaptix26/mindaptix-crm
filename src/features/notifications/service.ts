@@ -38,7 +38,7 @@ export async function createNotification(input: CreateNotificationInput) {
         sourceKey,
       },
     },
-    { upsert: true, new: true },
+    { upsert: true, returnDocument: "after" },
   );
 }
 

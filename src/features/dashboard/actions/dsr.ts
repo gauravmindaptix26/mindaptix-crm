@@ -1,5 +1,6 @@
 "use server";
 
+import { isValidObjectId } from "mongoose";
 import { revalidatePath } from "next/cache";
 import { getCurrentSession } from "@/features/auth/lib/auth-session";
 import connectDb from "@/database/mongodb/connect";
@@ -88,15 +89,21 @@ export async function submitDailyUpdate(
       nextPlan,
       attachments,
     },
-    { upsert: true, new: true, setDefaultsOnInsert: true },
+    { upsert: true, returnDocument: "after", setDefaultsOnInsert: true },
   );
 
-  const reportingManager = await UserModel.findById(session.user.managerId, { _id: 1, status: 1 }).lean();
+  const managerId = String(session.user.managerId ?? "").trim();
+  const reportingManager =
+    managerId && isValidObjectId(managerId)
+      ? await UserModel.findById(managerId, { _id: 1, status: 1 }).lean()
+      : null;
   const adminRecipients = await getAdminUserIds();
-  const recipients = [
+  const recipients = Array.from(
+    new Set([
     ...(reportingManager?.status === "ACTIVE" ? [reportingManager._id.toString()] : []),
     ...adminRecipients,
-  ];
+    ]),
+  );
   await createNotificationsForUsers(recipients, {
     actorUserId: session.user.id,
     type: "DSR_SUBMITTED",

@@ -142,7 +142,10 @@ export type EmployeeProjectEntry = {
   status: string;
   priority: string;
   dueDate: string;
+  techStack: string[];
   assignedUserIds: string[];
+  assignedUserNames: string[];
+  createdByUserId: string;
 };
 
 export type SalesLeadEntry = {
@@ -280,6 +283,7 @@ export type EmployeeOption = {
 export type TaskPageData = {
   summaryCards: SummaryCard[];
   tasks: TaskEntry[];
+  assignedProjects: EmployeeProjectView[];
   employeeOptions: EmployeeOption[];
   labelOptions: string[];
 };
@@ -291,6 +295,14 @@ export type EmployeeProjectView = {
   status: string;
   priority: string;
   dueDate: string;
+  techStack: string[];
+};
+
+export type ProjectsPageData = {
+  summaryCards: SummaryCard[];
+  projects: EmployeeProjectEntry[];
+  employeeOptions: EmployeeOption[];
+  technologyOptions: string[];
 };
 
 export type EmployeeUpdateView = {

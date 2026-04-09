@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useActionState, useMemo, useState } from "react";
-import { assignProjectToUser, createManagedProject } from "@/features/dashboard/actions/projects";
+import { assignProjectToUser, createManagedProject, updateManagedProject } from "@/features/dashboard/actions/projects";
 import { createSalesLead, type SalesLeadFormState } from "@/features/dashboard/actions/sales-leads";
 import { createManagedUser } from "@/features/dashboard/actions/users";
 import { Feedback } from "@/shared/ui/feedback";
@@ -36,6 +36,8 @@ type ProjectFormState = {
   error?: string;
   success?: string;
   values?: {
+    assignedUserIds?: string[];
+    id?: string;
     name?: string;
     summary?: string;
     status?: ProjectStatus;
@@ -61,12 +63,15 @@ export function EmployeesManagementPanel({
 }: EmployeesManagementPanelProps) {
   const [userState, createUserAction, userPending] = useActionState(createManagedUser, INITIAL_USER_MANAGEMENT_STATE);
   const [projectState, createProjectAction, projectPending] = useActionState(createManagedProject, INITIAL_PROJECT_STATE);
+  const [updateProjectState, updateProjectAction, updateProjectPending] = useActionState(updateManagedProject, INITIAL_PROJECT_STATE);
   const [salesLeadState, createSalesLeadAction, salesLeadPending] = useActionState(createSalesLead, INITIAL_SALES_LEAD_STATE);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [selectedUserId, setSelectedUserId] = useState(users[0]?.id ?? "");
+  const [selectedProjectId, setSelectedProjectId] = useState(projects[0]?.id ?? "");
 
   const projectNameById = new Map(projects.map((project) => [project.id, project.name]));
+  const projectEmployeeOptions = users.filter((user) => user.role === "EMPLOYEE" && user.status === "ACTIVE");
   const salesLabelById = Object.fromEntries(salesOptions.map((salesUser) => [salesUser.id, salesUser.label]));
   const totalTrackedBudget = salesLeadRows.reduce((sum, row) => sum + row.budget, 0);
   const totalPitchedValue = salesLeadRows.reduce((sum, row) => sum + row.pitchedPrice, 0);
@@ -93,6 +98,7 @@ export function EmployeesManagementPanel({
   }, [roleFilter, searchTerm, users]);
 
   const selectedUser = filteredUsers.find((user) => user.id === selectedUserId) ?? filteredUsers[0] ?? null;
+  const selectedProject = projects.find((project) => project.id === selectedProjectId) ?? projects[0] ?? null;
   const canManageWorkspace = !readOnly && !salesOnly;
   const shouldShowDirectory = !salesOnly;
   const shouldShowSalesTracker = canManageWorkspace || salesOnly;
@@ -190,7 +196,7 @@ export function EmployeesManagementPanel({
           </PanelSection>
 
           <PanelSection
-            description="Create projects once and assign them to employee accounts so DSR and execution stay structured."
+            description="Create project, fill delivery information, and assign one or more employees from the same form."
             eyebrow="Project Assignment"
             title="Create Project"
           >
@@ -236,12 +242,156 @@ export function EmployeesManagementPanel({
                 />
               </div>
 
+              <MultiSelectField
+                defaultValue={projectState.values?.assignedUserIds ?? []}
+                helperText="Ek ya multiple employees select karo. Create hote hi unke dashboard aur DSR view me project visible ho jayega."
+                label="Assign Employees"
+                name="assignedUserIds"
+                options={projectEmployeeOptions.map((user) => user.id)}
+                optionLabels={Object.fromEntries(projectEmployeeOptions.map((user) => [user.id, `${user.fullName} (${user.email})`]))}
+                required={false}
+              />
+
               <Button className="mt-2 min-w-44 sm:w-auto" disabled={projectPending} type="submit">
                 {projectPending ? "Creating..." : "Create Project"}
               </Button>
             </form>
           </PanelSection>
         </section>
+      ) : null}
+
+      {canManageWorkspace ? (
+        <PanelSection
+          description="Every created project stays here with assigned employees, delivery date, and quick edit access."
+          eyebrow="Project Register"
+          title="Manage Projects"
+        >
+          <div className="mt-6 space-y-6">
+            <DashboardTable
+              columns={[
+                { label: "Project", className: "min-w-[220px]" },
+                { label: "Employees", className: "min-w-[220px]" },
+                { label: "Status", className: "min-w-[120px]" },
+                { label: "Priority", className: "min-w-[110px]" },
+                { label: "Due Date", className: "min-w-[120px]" },
+                { label: "Action", className: "min-w-[110px]" },
+              ]}
+              emptyMessage="Projects will appear here after the first project is created."
+              hasRows={projects.length > 0}
+              hideScrollbar
+            >
+              {projects.map((project) => (
+                <tr className={selectedProject?.id === project.id ? "bg-blue-50/50" : ""} key={project.id}>
+                  <DashboardTableCell>
+                    <p className="font-semibold text-slate-900">{project.name}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">{project.summary}</p>
+                  </DashboardTableCell>
+                  <DashboardTableCell>
+                    <div className="flex flex-wrap gap-2">
+                      {project.assignedUserNames.length ? (
+                        project.assignedUserNames.map((employeeName) => (
+                          <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700" key={`${project.id}-${employeeName}`}>
+                            {employeeName}
+                          </span>
+                        ))
+                      ) : (
+                        <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold text-slate-500">No employee</span>
+                      )}
+                    </div>
+                  </DashboardTableCell>
+                  <DashboardTableCell>
+                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-600">
+                      {formatLabel(project.status)}
+                    </span>
+                  </DashboardTableCell>
+                  <DashboardTableCell>
+                    <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+                      {formatLabel(project.priority)}
+                    </span>
+                  </DashboardTableCell>
+                  <DashboardTableCell>{project.dueDate || "Not set"}</DashboardTableCell>
+                  <DashboardTableCell>
+                    <Button className="sm:w-auto" onClick={() => setSelectedProjectId(project.id)} type="button">
+                      Edit
+                    </Button>
+                  </DashboardTableCell>
+                </tr>
+              ))}
+            </DashboardTable>
+
+            {selectedProject ? (
+              <section className="rounded-[1.7rem] border border-slate-100 bg-slate-50 p-5">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-[0.72rem] font-semibold uppercase tracking-[0.22em] text-blue-500">Project Editor</p>
+                    <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{selectedProject.name}</h3>
+                    <p className="mt-2 text-sm text-slate-500">Project ko update karo, employee add/remove karo, aur delivery information edit karo.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      {formatLabel(selectedProject.status)}
+                    </span>
+                    <span className="rounded-full border border-amber-100 bg-amber-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700">
+                      {formatLabel(selectedProject.priority)}
+                    </span>
+                  </div>
+                </div>
+
+                <form action={updateProjectAction} className="mt-6 space-y-4">
+                  {updateProjectState.error ? <Feedback>{updateProjectState.error}</Feedback> : null}
+                  {updateProjectState.success ? <Feedback tone="success">{updateProjectState.success}</Feedback> : null}
+
+                  <input name="projectId" type="hidden" value={selectedProject.id} />
+
+                  <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_220px]">
+                    <Field defaultValue={selectedProject.name} label="Project Name" name="name" placeholder="Enter project name" />
+                    <Field
+                      defaultValue={selectedProject.dueDate}
+                      fallbackTodayForDate
+                      label="Due Date"
+                      name="dueDate"
+                      placeholder="Select due date"
+                      type="date"
+                    />
+                  </div>
+
+                  <TextAreaField defaultValue={selectedProject.summary} label="Project Summary" name="summary" placeholder="Write a short project summary" />
+
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <SelectField
+                      defaultValue={selectedProject.status}
+                      label="Status"
+                      labels={{ PLANNING: "Planning", IN_PROGRESS: "In Progress", ON_HOLD: "On Hold", COMPLETED: "Completed" }}
+                      name="status"
+                      options={["PLANNING", "IN_PROGRESS", "ON_HOLD", "COMPLETED"]}
+                    />
+                    <SelectField
+                      defaultValue={selectedProject.priority}
+                      label="Priority"
+                      labels={{ LOW: "Low", MEDIUM: "Medium", HIGH: "High" }}
+                      name="priority"
+                      options={["LOW", "MEDIUM", "HIGH"]}
+                    />
+                  </div>
+
+                  <MultiSelectField
+                    defaultValue={selectedProject.assignedUserIds}
+                    helperText="Selected employees ko project notification milegi aur project unke dashboard/DSR me visible rahega."
+                    label="Assigned Employees"
+                    name="assignedUserIds"
+                    options={projectEmployeeOptions.map((user) => user.id)}
+                    optionLabels={Object.fromEntries(projectEmployeeOptions.map((user) => [user.id, `${user.fullName} (${user.email})`]))}
+                    required={false}
+                  />
+
+                  <Button className="min-w-44 sm:w-auto" disabled={updateProjectPending} type="submit">
+                    {updateProjectPending ? "Saving..." : "Update Project"}
+                  </Button>
+                </form>
+              </section>
+            ) : null}
+          </div>
+        </PanelSection>
       ) : null}
 
       {shouldShowDirectory ? (
@@ -980,6 +1130,7 @@ function MultiSelectField({
   helperText,
   label,
   name,
+  optionLabels,
   options,
   required = true,
 }: {
@@ -987,6 +1138,7 @@ function MultiSelectField({
   helperText?: string;
   label: string;
   name: string;
+  optionLabels?: Record<string, string>;
   options: string[];
   required?: boolean;
 }) {
@@ -1002,7 +1154,7 @@ function MultiSelectField({
       >
         {options.map((option) => (
           <option key={option} value={option}>
-            {option}
+            {optionLabels?.[option] ?? option}
           </option>
         ))}
       </select>
@@ -1051,6 +1203,14 @@ function formatCurrency(value: number) {
     currency: "INR",
     maximumFractionDigits: 0,
   }).format(value);
+}
+
+function formatLabel(value: string) {
+  return value
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 function roleLabel(role: EmployeeDirectoryEntry["role"]) {

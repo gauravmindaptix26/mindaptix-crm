@@ -31,6 +31,7 @@ export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
   const pendingReviewCount = data.leaves.filter((leave) => leave.status === "PENDING").length;
   const showApplyForm = canApply;
   const isLeadershipReviewView = !canApply;
+  const isEmployeeHistoryView = canApply && !canReview;
   const displayedLeaves = [...data.leaves];
   const refreshLeavesView = useEffectEvent(() => {
     if (typeof document !== "undefined" && document.visibilityState !== "visible") {
@@ -68,26 +69,25 @@ export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
         </section>
       ) : null}
 
-      <section className={`grid gap-6 ${showApplyForm ? "xl:grid-cols-[420px_minmax(0,1fr)]" : ""}`}>
+      <section className="space-y-6">
         {showApplyForm ? (
           <PanelSection
             description="Apply for paid or sick leave with a reason and date range. Admins can review company leave requests from the same page."
             eyebrow="Leave Form"
             title="Apply Leave"
           >
-            <form action={formAction} className="mt-6 space-y-4">
+            <form action={formAction} className="mt-6 max-w-[940px] space-y-4">
               {state.error ? <Feedback>{state.error}</Feedback> : null}
               {state.success ? <Feedback tone="success">{state.success}</Feedback> : null}
 
-              <SelectField
-                defaultValue={state.values?.leaveType ?? "PAID"}
-                label="Leave Type"
-                labels={{ PAID: "Paid Leave", SICK: "Sick Leave" }}
-                name="leaveType"
-                options={["PAID", "SICK"]}
-              />
-
-              <div className="grid gap-4 md:grid-cols-2">
+              <div className="grid gap-4 xl:grid-cols-[minmax(220px,260px)_minmax(180px,220px)_minmax(180px,220px)]">
+                <SelectField
+                  defaultValue={state.values?.leaveType ?? "PAID"}
+                  label="Leave Type"
+                  labels={{ PAID: "Paid Leave", SICK: "Sick Leave" }}
+                  name="leaveType"
+                  options={["PAID", "SICK"]}
+                />
                 <Field defaultValue={state.values?.startDate} label="Start Date" name="startDate" placeholder="Start date" type="date" />
                 <Field defaultValue={state.values?.endDate} label="End Date" name="endDate" placeholder="End date" type="date" />
               </div>
@@ -106,20 +106,37 @@ export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
           </PanelSection>
         ) : null}
 
-        <PanelSection
-          description={
-            isLeadershipReviewView
-              ? "Approve or reject employee leave requests from one place."
-              : canReview
-              ? "Review employee leave requests, track used leave days, and approve or reject pending requests from one place."
-              : !canApply
-                ? "Read-only company leave history showing requested dates, current status, and employee leave usage."
-                : "Complete leave history for your account, including pending, approved, and rejected requests."
-          }
-          eyebrow="Leave History"
-          title={isLeadershipReviewView ? "Employee Leave Requests" : canReview ? "Review Requests" : canApply ? "Requests" : "Leave History"}
-        >
-          <div className="mt-6 max-w-full">
+        {isEmployeeHistoryView ? (
+          <section className="min-w-0 rounded-[2rem] border border-slate-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] px-5 py-6 shadow-[0_20px_48px_rgba(15,23,42,0.06)] sm:px-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-600">Leave History</p>
+                <h2 className="mt-2 text-[1.75rem] font-semibold tracking-tight text-slate-950">My Requests</h2>
+              </div>
+              <div className="inline-flex w-fit items-center rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">
+                {displayedLeaves.length} total request{displayedLeaves.length === 1 ? "" : "s"}
+              </div>
+            </div>
+
+            <div className="mt-5 max-w-full">
+              <EmployeeLeaveHistoryTable leaves={displayedLeaves} />
+            </div>
+          </section>
+        ) : (
+          <PanelSection
+            description={
+              isLeadershipReviewView
+                ? "Approve or reject employee leave requests from one place."
+                : canReview
+                  ? "Review employee leave requests, track used leave days, and approve or reject pending requests from one place."
+                  : !canApply
+                    ? "Read-only company leave history showing requested dates, current status, and employee leave usage."
+                    : "Complete leave history for your account, including pending, approved, and rejected requests."
+            }
+            eyebrow="Leave History"
+            title={isLeadershipReviewView ? "Employee Leave Requests" : canReview ? "Review Requests" : canApply ? "Requests" : "Leave History"}
+          >
+            <div className="mt-6 max-w-full">
             {canReview && !isLeadershipReviewView ? (
               <div className="mb-6 max-w-full overflow-hidden rounded-[1.75rem] border border-amber-200/80 bg-[linear-gradient(135deg,#fff7db_0%,#fffdf3_58%,#ffffff_100%)] shadow-[0_20px_45px_rgba(245,158,11,0.14)]">
                 <div className="grid gap-4 px-5 py-5 xl:grid-cols-[minmax(0,1fr)_minmax(280px,360px)] xl:items-center">
@@ -203,23 +220,20 @@ export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
               </div>
             ) : null}
 
-            {canApply && !canReview ? (
-              <EmployeeLeaveHistoryTable leaves={displayedLeaves} />
-            ) : (
-              <div className={`grid gap-4 ${canReview ? "xl:grid-cols-2" : "grid-cols-1"}`}>
-                {displayedLeaves.length ? (
-                  displayedLeaves.map((leave) => (
-                    <LeaveRequestCard canDelete={canApply || canReview} canReview={canReview} key={leave.id} leave={leave} />
-                  ))
-                ) : (
-                  <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">
-                    No leave requests available yet.
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        </PanelSection>
+            <div className={`grid gap-4 ${canReview ? "xl:grid-cols-2" : "grid-cols-1"}`}>
+              {displayedLeaves.length ? (
+                displayedLeaves.map((leave) => (
+                  <LeaveRequestCard canDelete={canApply || canReview} canReview={canReview} key={leave.id} leave={leave} />
+                ))
+              ) : (
+                <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">
+                  No leave requests available yet.
+                </div>
+              )}
+            </div>
+            </div>
+          </PanelSection>
+        )}
       </section>
     </div>
   );
@@ -327,47 +341,50 @@ function EmployeeLeaveHistoryTable({ leaves }: { leaves: LeavePageData["leaves"]
     <div className="max-w-full overflow-hidden rounded-[1.7rem] border border-slate-200/80 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] shadow-[0_18px_36px_rgba(15,23,42,0.06)]">
       <DashboardTable
         columns={[
-          { label: "Type" },
-          { label: "Dates", className: "min-w-[210px]" },
-          { label: "Days" },
-          { label: "Reason", className: "min-w-[220px]" },
-          { label: "Status" },
-          { label: "Action", className: "w-[110px]" },
+          { label: "Type", className: "w-[110px]" },
+          { label: "Dates", className: "w-[180px]" },
+          { label: "Days", className: "w-[84px]" },
+          { label: "Reason" },
+          { label: "Status", className: "w-[132px]" },
+          { label: "Action", className: "w-[104px]" },
         ]}
         emptyMessage="No leave requests available yet."
+        fixedLayout
         hasRows={leaves.length > 0}
         hideScrollbar
       >
         {leaves.map((leave) => (
           <tr className="bg-white/80 transition hover:bg-sky-50/50" key={leave.id}>
-            <DashboardTableCell>
+            <DashboardTableCell className="whitespace-nowrap">
               <span className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] ${getLeaveTypeBadgeClassName(leave.leaveType)}`}>
                 {formatLabel(leave.leaveType)}
               </span>
             </DashboardTableCell>
             <DashboardTableCell>
-              <div className="text-sm font-semibold text-slate-900">
-                {leave.startDate} <span className="mx-1 text-xs uppercase tracking-[0.16em] text-slate-400">to</span> {leave.endDate}
+              <div className="space-y-1 text-sm font-semibold text-slate-900">
+                <div>{leave.startDate}</div>
+                <div className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-400">to</div>
+                <div>{leave.endDate}</div>
               </div>
             </DashboardTableCell>
-            <DashboardTableCell>
+            <DashboardTableCell className="whitespace-nowrap">
               <span className="inline-flex min-w-[58px] items-center justify-center rounded-2xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-700">
                 {leave.requestedDays}
               </span>
             </DashboardTableCell>
             <DashboardTableCell>
-              <p className="line-clamp-2 text-sm leading-6 text-slate-600">{leave.reason}</p>
+              <p className="whitespace-normal break-words text-sm leading-6 text-slate-700">{leave.reason}</p>
             </DashboardTableCell>
-            <DashboardTableCell>
+            <DashboardTableCell className="whitespace-nowrap">
               <span className={`inline-flex rounded-full px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.18em] ${getStatusBadgeClassName(leave.status)}`}>
                 {formatLabel(leave.status)}
               </span>
             </DashboardTableCell>
-            <DashboardTableCell>
+            <DashboardTableCell className="whitespace-nowrap">
               <form action={deleteLeaveRequest}>
                 <input name="leaveId" type="hidden" value={leave.id} />
                 <Button
-                  className="min-w-[90px] rounded-xl border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-none hover:border-slate-300 hover:bg-slate-50"
+                  className="rounded-xl border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-none hover:border-slate-300 hover:bg-slate-50"
                   type="submit"
                 >
                   Delete
@@ -548,7 +565,7 @@ function TextAreaField({ defaultValue, label, name, placeholder }: Omit<FieldPro
     <label className="block">
       <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
       <textarea
-        className="min-h-28 w-full rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-3 text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
+        className="min-h-24 w-full rounded-2xl border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] px-4 py-3 text-slate-900 outline-none transition focus:border-blue-300 focus:ring-4 focus:ring-blue-100"
         defaultValue={defaultValue}
         name={name}
         placeholder={placeholder}

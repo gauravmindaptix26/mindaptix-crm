@@ -3,6 +3,7 @@ import type { UserRole } from "@/features/auth/lib/rbac";
 export type DashboardNavKey =
   | "dashboard"
   | "employees"
+  | "projects"
   | "attendance"
   | "leaves"
   | "tasks"
@@ -25,6 +26,7 @@ export const DASHBOARD_NAV_ITEMS: DashboardNavItem[] = [
     allowedRoles: ["SUPER_ADMIN", "MANAGER", "EMPLOYEE", "SALES"],
   },
   { key: "employees", label: "Employees", href: "/dashboard/employees", allowedRoles: ["SUPER_ADMIN", "MANAGER", "SALES"] },
+  { key: "projects", label: "Projects", href: "/dashboard/projects", allowedRoles: ["SUPER_ADMIN", "MANAGER"] },
   { key: "attendance", label: "Attendance", href: "/dashboard/attendance", allowedRoles: ["SUPER_ADMIN", "MANAGER", "EMPLOYEE"] },
   { key: "leaves", label: "Leaves", href: "/dashboard/leaves", allowedRoles: ["SUPER_ADMIN", "MANAGER", "EMPLOYEE"] },
   { key: "tasks", label: "Tasks", href: "/dashboard/tasks", allowedRoles: ["SUPER_ADMIN", "MANAGER", "EMPLOYEE"] },

@@ -198,6 +198,8 @@ function getMenuIcon(key: DashboardNavKey) {
       return <GridIcon />;
     case "employees":
       return <UsersIcon />;
+    case "projects":
+      return <FolderIcon />;
     case "attendance":
       return <CalendarIcon />;
     case "leaves":
@@ -269,6 +271,15 @@ function BriefcaseIcon() {
       <rect height="13" rx="2.2" stroke="currentColor" strokeWidth="1.7" width="18" x="3" y="6.5" />
       <path d="M3 11.5h18" stroke="currentColor" strokeWidth="1.7" />
       <path d="M10 11.5v2h4v-2" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.7" />
+    </svg>
+  );
+}
+
+function FolderIcon() {
+  return (
+    <svg aria-hidden="true" fill="none" height="20" viewBox="0 0 24 24" width="20">
+      <path d="M3.5 7.5A2.5 2.5 0 0 1 6 5h4l1.6 1.8c.3.4.7.7 1.2.7H18A2.5 2.5 0 0 1 20.5 10v7A2.5 2.5 0 0 1 18 19.5H6A2.5 2.5 0 0 1 3.5 17v-9.5Z" stroke="currentColor" strokeLinejoin="round" strokeWidth="1.7" />
+      <path d="M3.5 9.5h17" stroke="currentColor" strokeWidth="1.7" />
     </svg>
   );
 }

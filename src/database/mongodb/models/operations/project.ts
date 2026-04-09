@@ -39,6 +39,10 @@ const projectSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    techStack: {
+      type: [String],
+      default: [],
+    },
     assignedUserIds: {
       type: [String],
       default: [],
@@ -54,6 +58,16 @@ const projectSchema = new mongoose.Schema(
 export type ProjectRecord = InferSchemaType<typeof projectSchema> & {
   _id: mongoose.Types.ObjectId;
 };
+
+const cachedProjectModel = mongoose.models.Project as Model<ProjectRecord> | undefined;
+const hasLatestProjectFields =
+  cachedProjectModel?.schema.path("techStack") &&
+  cachedProjectModel.schema.path("assignedUserIds") &&
+  cachedProjectModel.schema.path("createdByUserId");
+
+if (cachedProjectModel && !hasLatestProjectFields) {
+  delete mongoose.models.Project;
+}
 
 export const ProjectModel =
   ((mongoose.models.Project as Model<ProjectRecord> | undefined) ??

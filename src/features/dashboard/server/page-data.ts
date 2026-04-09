@@ -6,6 +6,7 @@ export {
   getDsrPageData,
   getEmployeesPageData,
   getLeavesPageData,
+  getProjectsPageData,
   getReportsPageData,
   getSettingsPageData,
   getTasksPageData,

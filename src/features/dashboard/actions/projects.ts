@@ -18,11 +18,14 @@ type ProjectManagementState = {
   error?: string;
   success?: string;
   values?: {
+    assignedUserIds?: string[];
+    id?: string;
     name?: string;
     summary?: string;
     status?: ProjectStatus;
     priority?: ProjectPriority;
     dueDate?: string;
+    techStack?: string[];
   };
 };
 
@@ -43,39 +46,185 @@ export async function createManagedProject(
   const status = String(formData.get("status") ?? "PLANNING");
   const priority = String(formData.get("priority") ?? "MEDIUM");
   const dueDate = String(formData.get("dueDate") ?? "").trim();
+  const techStack = extractMultiValue(formData, "techStack");
+  const assignedUserIds = extractMultiValue(formData, "assignedUserIds");
+
+  if (!techStack.length) {
+    return {
+      error: "Select at least one tech stack for the project.",
+      values: { name, summary, status: safeStatus(status), priority: safePriority(priority), dueDate, assignedUserIds, techStack },
+    };
+  }
 
   if (name.length < 2 || name.length > 120) {
-    return { error: "Project name must be between 2 and 120 characters.", values: { name, summary } };
+    return { error: "Project name must be between 2 and 120 characters.", values: { name, summary, assignedUserIds, techStack } };
   }
 
   if (summary.length < 8 || summary.length > 600) {
     return {
       error: "Project summary must be between 8 and 600 characters.",
-      values: { name, summary, status: safeStatus(status), priority: safePriority(priority), dueDate },
+      values: { name, summary, status: safeStatus(status), priority: safePriority(priority), dueDate, assignedUserIds, techStack },
     };
   }
 
   if (!PROJECT_STATUSES.includes(status as ProjectStatus) || !PROJECT_PRIORITIES.includes(priority as ProjectPriority)) {
-    return { error: "Project status or priority is invalid.", values: { name, summary, dueDate } };
+    return { error: "Project status or priority is invalid.", values: { name, summary, dueDate, assignedUserIds, techStack } };
   }
 
   await connectDb();
 
-  await ProjectModel.create({
+  const resolvedAssignments = await resolveAssignedEmployeeIds(assignedUserIds);
+
+  if (resolvedAssignments.error) {
+    return {
+      error: resolvedAssignments.error,
+      values: { name, summary, status: safeStatus(status), priority: safePriority(priority), dueDate, assignedUserIds, techStack },
+    };
+  }
+  const assignedEmployeeIds = resolvedAssignments.value ?? [];
+
+  const project = await ProjectModel.create({
     name,
     summary,
     status,
     priority,
     dueDate: dueDate ? new Date(dueDate) : null,
+    techStack,
+    assignedUserIds: assignedEmployeeIds,
     createdByUserId: session.user.id,
   });
 
+  if (assignedEmployeeIds.length) {
+    await UserModel.updateMany(
+      { _id: { $in: assignedEmployeeIds } },
+      { $addToSet: { projectIds: project._id.toString() } },
+    );
+
+    await notifyProjectAssignments({
+      actorUserId: session.user.id,
+      projectId: project._id.toString(),
+      projectName: project.name,
+      userIds: assignedEmployeeIds,
+    });
+  }
+
   revalidatePath("/dashboard/employees");
+  revalidatePath("/dashboard");
   revalidatePath("/dashboard/dsr");
+  revalidatePath("/dashboard/tasks");
+  revalidatePath("/dashboard/projects");
 
   return {
     success: "Project created successfully.",
-    values: { status: "PLANNING", priority: "MEDIUM" },
+    values: { status: "PLANNING", priority: "MEDIUM", assignedUserIds: [], techStack: [] },
+  };
+}
+
+export async function updateManagedProject(
+  _previousState: ProjectManagementState,
+  formData: FormData,
+): Promise<ProjectManagementState> {
+  const session = await getCurrentSession();
+
+  try {
+    assertAdminOrManager(session);
+  } catch {
+    return { error: "Only admin can update projects." };
+  }
+
+  const id = String(formData.get("projectId") ?? "").trim();
+  const name = String(formData.get("name") ?? "").trim();
+  const summary = String(formData.get("summary") ?? "").trim();
+  const status = String(formData.get("status") ?? "PLANNING");
+  const priority = String(formData.get("priority") ?? "MEDIUM");
+  const dueDate = String(formData.get("dueDate") ?? "").trim();
+  const techStack = extractMultiValue(formData, "techStack");
+  const assignedUserIds = extractMultiValue(formData, "assignedUserIds");
+
+  if (!techStack.length) {
+    return {
+      error: "Select at least one tech stack for the project.",
+      values: { id, name, summary, status: safeStatus(status), priority: safePriority(priority), dueDate, assignedUserIds, techStack },
+    };
+  }
+
+  if (!id) {
+    return { error: "Project selection is required.", values: { id, name, summary, status: safeStatus(status), priority: safePriority(priority), dueDate, assignedUserIds, techStack } };
+  }
+
+  if (name.length < 2 || name.length > 120) {
+    return { error: "Project name must be between 2 and 120 characters.", values: { id, name, summary, status: safeStatus(status), priority: safePriority(priority), dueDate, assignedUserIds, techStack } };
+  }
+
+  if (summary.length < 8 || summary.length > 600) {
+    return {
+      error: "Project summary must be between 8 and 600 characters.",
+      values: { id, name, summary, status: safeStatus(status), priority: safePriority(priority), dueDate, assignedUserIds, techStack },
+    };
+  }
+
+  if (!PROJECT_STATUSES.includes(status as ProjectStatus) || !PROJECT_PRIORITIES.includes(priority as ProjectPriority)) {
+    return { error: "Project status or priority is invalid.", values: { id, name, summary, dueDate, assignedUserIds, techStack } };
+  }
+
+  await connectDb();
+
+  const project = await ProjectModel.findById(id, { assignedUserIds: 1, name: 1 }).lean();
+
+  if (!project) {
+    return { error: "Selected project was not found.", values: { id, name, summary, status: safeStatus(status), priority: safePriority(priority), dueDate, assignedUserIds, techStack } };
+  }
+
+  const resolvedAssignments = await resolveAssignedEmployeeIds(assignedUserIds);
+
+  if (resolvedAssignments.error) {
+    return {
+      error: resolvedAssignments.error,
+      values: { id, name, summary, status: safeStatus(status), priority: safePriority(priority), dueDate, assignedUserIds, techStack },
+    };
+  }
+  const nextAssignments = resolvedAssignments.value ?? [];
+
+  const previousAssignments = Array.from(new Set(project.assignedUserIds ?? []));
+  const removedAssignments = previousAssignments.filter((userId) => !nextAssignments.includes(userId));
+  const addedAssignments = nextAssignments.filter((userId) => !previousAssignments.includes(userId));
+
+  await ProjectModel.findByIdAndUpdate(id, {
+    name,
+    summary,
+    status,
+    priority,
+    dueDate: dueDate ? new Date(dueDate) : null,
+    techStack,
+    assignedUserIds: nextAssignments,
+  });
+
+  if (removedAssignments.length) {
+    await UserModel.updateMany({ _id: { $in: removedAssignments } }, { $pull: { projectIds: id } });
+  }
+
+  if (nextAssignments.length) {
+    await UserModel.updateMany({ _id: { $in: nextAssignments } }, { $addToSet: { projectIds: id } });
+  }
+
+  if (addedAssignments.length) {
+    await notifyProjectAssignments({
+      actorUserId: session.user.id,
+      projectId: id,
+      projectName: name,
+      userIds: addedAssignments,
+    });
+  }
+
+  revalidatePath("/dashboard/employees");
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/dsr");
+  revalidatePath("/dashboard/tasks");
+  revalidatePath("/dashboard/projects");
+
+  return {
+    success: "Project updated successfully.",
+    values: { id, name, summary, status: safeStatus(status), priority: safePriority(priority), dueDate, assignedUserIds: nextAssignments, techStack },
   };
 }
 
@@ -126,6 +275,43 @@ export async function assignProjectToUser(formData: FormData) {
   revalidatePath("/dashboard/employees");
   revalidatePath("/dashboard");
   revalidatePath("/dashboard/dsr");
+  revalidatePath("/dashboard/tasks");
+  revalidatePath("/dashboard/projects");
+}
+
+export async function deleteManagedProject(formData: FormData) {
+  const session = await getCurrentSession();
+
+  try {
+    assertAdminOrManager(session);
+  } catch {
+    throw new Error("Only admin can delete projects.");
+  }
+
+  const projectId = String(formData.get("projectId") ?? "").trim();
+
+  if (!projectId) {
+    throw new Error("Project selection is required.");
+  }
+
+  await connectDb();
+
+  const project = await ProjectModel.findById(projectId, { _id: 1 }).lean();
+
+  if (!project) {
+    throw new Error("Selected project was not found.");
+  }
+
+  await Promise.all([
+    ProjectModel.findByIdAndDelete(projectId),
+    UserModel.updateMany({ projectIds: projectId }, { $pull: { projectIds: projectId } }),
+  ]);
+
+  revalidatePath("/dashboard/employees");
+  revalidatePath("/dashboard");
+  revalidatePath("/dashboard/dsr");
+  revalidatePath("/dashboard/tasks");
+  revalidatePath("/dashboard/projects");
 }
 
 function safeStatus(value: string): ProjectStatus {
@@ -134,6 +320,67 @@ function safeStatus(value: string): ProjectStatus {
 
 function safePriority(value: string): ProjectPriority {
   return PROJECT_PRIORITIES.includes(value as ProjectPriority) ? (value as ProjectPriority) : "MEDIUM";
+}
+
+function extractMultiValue(formData: FormData, name: string) {
+  const directValues = formData
+    .getAll(name)
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+
+  if (directValues.length) {
+    return Array.from(new Set(directValues));
+  }
+
+  const csvValue = String(formData.get(`${name}Csv`) ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+
+  return Array.from(new Set(csvValue));
+}
+
+async function resolveAssignedEmployeeIds(userIds: string[]) {
+  const uniqueUserIds = Array.from(new Set(userIds.filter(Boolean)));
+
+  if (!uniqueUserIds.length) {
+    return { value: [] as string[] };
+  }
+
+  const employees = await UserModel.find({ _id: { $in: uniqueUserIds } }, { role: 1, status: 1 }).lean();
+
+  if (employees.length !== uniqueUserIds.length) {
+    return { error: "One or more selected employees were not found." };
+  }
+
+  const invalidEmployee = employees.find((user) => user.role !== "EMPLOYEE" || user.status !== "ACTIVE");
+
+  if (invalidEmployee) {
+    return { error: "Projects can only be assigned to active employee accounts." };
+  }
+
+  return { value: uniqueUserIds };
+}
+
+async function notifyProjectAssignments({
+  actorUserId,
+  projectId,
+  projectName,
+  userIds,
+}: {
+  actorUserId: string;
+  projectId: string;
+  projectName: string;
+  userIds: string[];
+}) {
+  await createNotificationsForUsers(userIds, {
+    actorUserId,
+    type: "PROJECT_ASSIGNED",
+    title: "New project assigned",
+    message: `${projectName} has been assigned to you. Open DSR to review the project details and start reporting work on it.`,
+    actionUrl: "/dashboard/dsr",
+    sourceKey: `project-assigned:${projectId}`,
+  });
 }
 
 
