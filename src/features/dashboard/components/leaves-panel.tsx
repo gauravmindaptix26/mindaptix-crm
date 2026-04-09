@@ -214,7 +214,7 @@ export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
             ) : null}
 
             {isLeadershipReviewView ? (
-              <LeadershipLeaveReviewTable canDelete={canApply || canReview} canReview={canReview} leaves={displayedLeaves} />
+              <LeadershipLeaveReviewTable canReview={canReview} leaves={displayedLeaves} />
             ) : (
               <div className={`grid gap-4 ${canReview ? "xl:grid-cols-2" : "grid-cols-1"}`}>
                 {displayedLeaves.length ? (
@@ -397,11 +397,9 @@ function EmployeeLeaveHistoryTable({ leaves }: { leaves: LeavePageData["leaves"]
 }
 
 function LeadershipLeaveReviewTable({
-  canDelete,
   canReview,
   leaves,
 }: {
-  canDelete: boolean;
   canReview: boolean;
   leaves: LeavePageData["leaves"];
 }) {
@@ -483,18 +481,6 @@ function LeadershipLeaveReviewTable({
                     Processed
                   </div>
                 )}
-                {canDelete ? (
-                  <form action={deleteLeaveRequest}>
-                    <input name="leaveId" type="hidden" value={leave.id} />
-                    <FormActionButton
-                      className="min-w-[88px] rounded-xl border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 shadow-none hover:border-slate-300 hover:bg-slate-50"
-                      pendingLabel="Deleting..."
-                      type="submit"
-                    >
-                      Delete
-                    </FormActionButton>
-                  </form>
-                ) : null}
               </div>
             </DashboardTableCell>
           </tr>
