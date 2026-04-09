@@ -1,9 +1,6 @@
-import { AdminDashboardOverview } from "@/features/dashboard/components/admin-dashboard-overview";
-import { EmployeeDashboardOverview } from "@/features/dashboard/components/employee-dashboard-overview";
+import { AdminDashboardOverview, EmployeeDashboardOverview } from "@/features/dashboard/components";
 import { getCurrentSession } from "@/features/auth/lib/auth-session";
-import { getAdminDashboardOverview } from "@/features/dashboard/roles/admin/overview";
-import { getEmployeeDashboardOverview } from "@/features/dashboard/roles/employee/overview";
-import { getManagerDashboardOverview } from "@/features/dashboard/roles/manager/overview";
+import { getAdminDashboardOverview, getEmployeeDashboardOverview, getManagerDashboardOverview } from "@/features/dashboard/roles";
 import { getDisplayRoleLabel } from "@/features/dashboard/config";
 
 export default async function DashboardPage() {

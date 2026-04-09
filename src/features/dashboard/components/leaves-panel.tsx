@@ -3,7 +3,7 @@
 import type { ReactNode } from "react";
 import { startTransition, useActionState, useEffect, useEffectEvent } from "react";
 import { useRouter } from "next/navigation";
-import { applyLeaveRequest, reviewLeaveRequest } from "@/features/dashboard/actions/leaves";
+import { applyLeaveRequest, deleteLeaveRequest, reviewLeaveRequest } from "@/features/dashboard/actions/leaves";
 import { Feedback } from "@/shared/ui/feedback";
 import { Button } from "@/shared/ui/button";
 import { DashboardTable, DashboardTableCell } from "@/shared/ui/dashboard-table";
@@ -206,7 +206,7 @@ export function LeavesPanel({ canApply, canReview, data }: LeavesPanelProps) {
             <div className={`grid gap-4 ${canReview ? "xl:grid-cols-2" : "grid-cols-1"}`}>
               {displayedLeaves.length ? (
                 displayedLeaves.map((leave) => (
-                  <LeaveRequestCard canReview={canReview} key={leave.id} leave={leave} />
+                  <LeaveRequestCard canDelete={canApply || canReview} canReview={canReview} key={leave.id} leave={leave} />
                 ))
               ) : (
                 <div className="rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-5 text-sm leading-6 text-slate-500">
@@ -319,9 +319,11 @@ function MetricBadge({
 }
 
 function LeaveRequestCard({
+  canDelete,
   canReview,
   leave,
 }: {
+  canDelete: boolean;
   canReview: boolean;
   leave: LeavePageData["leaves"][number];
 }) {
@@ -402,6 +404,17 @@ function LeaveRequestCard({
             {leave.status === "PENDING" ? "Waiting for review" : "Processed"}
           </div>
         )}
+        {canDelete ? (
+          <form action={deleteLeaveRequest}>
+            <input name="leaveId" type="hidden" value={leave.id} />
+            <Button
+              className="min-w-[120px] rounded-xl border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-700 shadow-none hover:border-slate-300 hover:bg-slate-50 sm:w-auto"
+              type="submit"
+            >
+              Delete
+            </Button>
+          </form>
+        ) : null}
       </div>
     </article>
   );

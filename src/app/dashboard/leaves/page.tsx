@@ -1,4 +1,4 @@
-import { renderDashboardRoute } from "@/features/dashboard/router/render-page";
+import { renderDashboardRoute } from "@/features/dashboard/router";
 
 export default async function DashboardLeavesPage() {
   return renderDashboardRoute("leaves");

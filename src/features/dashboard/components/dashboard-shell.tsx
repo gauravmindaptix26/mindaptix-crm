@@ -1,10 +1,10 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { startTransition, useEffect, useEffectEvent, useMemo, useState, useSyncExternalStore } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { logoutUser } from "@/features/auth/actions";
 import { Button } from "@/shared/ui/button";
 import type { AuthenticatedSession } from "@/features/auth/lib/auth-session";
@@ -21,6 +21,7 @@ type DashboardShellProps = {
 };
 
 export function DashboardShell({ children, session }: DashboardShellProps) {
+  const router = useRouter();
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const hasHydrated = useSyncExternalStore(subscribeToHydration, getClientHydrationSnapshot, getServerHydrationSnapshot);
@@ -29,6 +30,48 @@ export function DashboardShell({ children, session }: DashboardShellProps) {
     "lg:sticky lg:top-0 lg:h-screen lg:self-start lg:translate-x-0 lg:overflow-y-auto lg:rounded-none lg:border-r lg:border-slate-800/50 lg:shadow-none";
   const activePathname = hasHydrated ? pathname : "";
   const showSidebarOverlay = hasHydrated && isSidebarOpen;
+  const refreshDashboardView = useEffectEvent(() => {
+    if (typeof document === "undefined" || document.visibilityState !== "visible") {
+      return;
+    }
+
+    const activeElement = document.activeElement as HTMLElement | null;
+    const tagName = activeElement?.tagName?.toLowerCase();
+    const isEditing =
+      tagName === "input" ||
+      tagName === "textarea" ||
+      tagName === "select" ||
+      activeElement?.isContentEditable === true;
+
+    if (isEditing) {
+      return;
+    }
+
+    startTransition(() => {
+      router.refresh();
+    });
+  });
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      refreshDashboardView();
+    }, 2500);
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        refreshDashboardView();
+      }
+    };
+
+    window.addEventListener("focus", refreshDashboardView);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      window.clearInterval(intervalId);
+      window.removeEventListener("focus", refreshDashboardView);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, []);
 
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[#f4f7fb] text-slate-900 lg:h-screen lg:overflow-hidden">

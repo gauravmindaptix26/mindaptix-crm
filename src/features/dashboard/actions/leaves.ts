@@ -116,6 +116,7 @@ export async function reviewLeaveRequest(formData: FormData) {
     await LeaveRequestModel.findByIdAndUpdate(leaveId, {
       status,
       reviewedByUserId: session.user.id,
+      reviewedAt: new Date(),
     });
 
     await createNotificationsForUsers([reviewUserId], {
@@ -132,6 +133,49 @@ export async function reviewLeaveRequest(formData: FormData) {
     revalidatePath("/dashboard");
   } catch (error) {
     console.error("reviewLeaveRequest failed", error);
+  }
+}
+
+export async function deleteLeaveRequest(formData: FormData) {
+  try {
+    const session = await getCurrentSession();
+
+    if (!session) {
+      return;
+    }
+
+    const leaveId = String(formData.get("leaveId") ?? "");
+
+    if (!leaveId) {
+      return;
+    }
+
+    await connectDb();
+
+    const leaveRequest = await LeaveRequestModel.findById(leaveId, { userId: 1 }).lean();
+
+    if (!leaveRequest?.userId) {
+      return;
+    }
+
+    const leaveUserId = String(leaveRequest.userId);
+    const canDeleteOwnLeave = session.user.role === "EMPLOYEE" && leaveUserId === session.user.id;
+    const canDeleteScopedLeave =
+      session.user.role === "MANAGER" || session.user.role === "SUPER_ADMIN"
+        ? (await getVisibleUserIdsForSession(session, { employeesOnly: true })).includes(leaveUserId)
+        : false;
+
+    if (!canDeleteOwnLeave && !canDeleteScopedLeave) {
+      return;
+    }
+
+    await LeaveRequestModel.findByIdAndDelete(leaveId);
+
+    revalidatePath("/dashboard/leaves");
+    revalidatePath("/dashboard/reports");
+    revalidatePath("/dashboard");
+  } catch (error) {
+    console.error("deleteLeaveRequest failed", error);
   }
 }
 
