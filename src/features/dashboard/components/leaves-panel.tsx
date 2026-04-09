@@ -470,8 +470,8 @@ function LeadershipLeaveReviewTable({
                       <input name="leaveId" type="hidden" value={leave.id} />
                       <input name="status" type="hidden" value="REJECTED" />
                       <FormActionButton
-                        className="min-w-[94px] rounded-xl border-rose-200 bg-[linear-gradient(135deg,#fff1f2_0%,#ffe4e6_100%)] px-3 py-2 text-sm text-rose-700 shadow-none hover:border-rose-300 hover:bg-[linear-gradient(135deg,#ffe4e6_0%,#fecdd3_100%)]"
-                        pendingLabel="Saving..."
+                        className="min-w-[94px] rounded-xl border border-rose-300 bg-[linear-gradient(135deg,#fff1f2_0%,#fda4af_100%)] px-3 py-2 text-sm font-semibold text-rose-800 shadow-[0_10px_24px_rgba(244,63,94,0.16)] hover:border-rose-400 hover:bg-[linear-gradient(135deg,#ffe4e6_0%,#fb7185_100%)] hover:text-rose-950"
+                        pendingLabel="Rejecting..."
                         type="submit"
                       >
                         Reject
@@ -578,8 +578,8 @@ function LeaveRequestCard({
               <input name="leaveId" type="hidden" value={leave.id} />
               <input name="status" type="hidden" value="REJECTED" />
               <FormActionButton
-                className="min-w-[120px] rounded-xl border-rose-200 bg-[linear-gradient(135deg,#fff1f2_0%,#ffe4e6_100%)] px-4 py-2.5 text-sm text-rose-700 shadow-none hover:border-rose-300 hover:bg-[linear-gradient(135deg,#ffe4e6_0%,#fecdd3_100%)] sm:w-auto"
-                pendingLabel="Saving..."
+                className="min-w-[120px] rounded-xl border border-rose-300 bg-[linear-gradient(135deg,#fff1f2_0%,#fda4af_100%)] px-4 py-2.5 text-sm font-semibold text-rose-800 shadow-[0_14px_30px_rgba(244,63,94,0.18)] hover:border-rose-400 hover:bg-[linear-gradient(135deg,#ffe4e6_0%,#fb7185_100%)] hover:text-rose-950 sm:w-auto"
+                pendingLabel="Rejecting..."
                 type="submit"
               >
                 Reject
