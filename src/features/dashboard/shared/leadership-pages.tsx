@@ -30,7 +30,11 @@ export async function renderLeadershipDashboardPage(page: DashboardPageKey, sess
       return (
         <EmployeesManagementPanel
           readOnly={isReadOnlySuperAdmin}
+          salesLeadPriorityOptions={data.salesLeadPriorityOptions}
+          salesLeadSourceOptions={data.salesLeadSourceOptions}
+          salesLeadStatusOptions={data.salesLeadStatusOptions}
           salesLeadRows={data.salesLeadRows}
+          salesWorkspace={data.salesWorkspace}
           salesOptions={data.salesOptions}
           salesTechnologyOptions={data.salesTechnologyOptions}
           summaryCards={data.summaryCards}

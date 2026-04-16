@@ -26,12 +26,49 @@ export const SALES_TECH_OPTIONS = [
 
 export type SalesTechOption = (typeof SALES_TECH_OPTIONS)[number];
 
+export const SALES_LEAD_SOURCES = [
+  "Website",
+  "Referral",
+  "Facebook",
+  "Instagram",
+  "LinkedIn",
+  "WhatsApp",
+  "Call",
+  "Walk-in",
+  "Campaign",
+  "Other",
+] as const;
+
+export type SalesLeadSource = (typeof SALES_LEAD_SOURCES)[number];
+
+export const SALES_LEAD_STATUSES = [
+  "NEW",
+  "CONTACTED",
+  "QUALIFIED",
+  "PROPOSAL_SENT",
+  "NEGOTIATION",
+  "WON",
+  "LOST",
+] as const;
+
+export type SalesLeadStatus = (typeof SALES_LEAD_STATUSES)[number];
+
+export const SALES_LEAD_PRIORITIES = ["HOT", "WARM", "COLD"] as const;
+
+export type SalesLeadPriority = (typeof SALES_LEAD_PRIORITIES)[number];
+
 const salesLeadSchema = new mongoose.Schema(
   {
     salesUserId: {
       type: String,
       required: true,
       index: true,
+    },
+    companyName: {
+      type: String,
+      trim: true,
+      maxlength: 160,
+      default: "",
     },
     clientName: {
       type: String,
@@ -52,6 +89,24 @@ const salesLeadSchema = new mongoose.Schema(
       lowercase: true,
       maxlength: 160,
       default: "",
+    },
+    source: {
+      type: String,
+      enum: SALES_LEAD_SOURCES,
+      default: "Website",
+      required: true,
+    },
+    status: {
+      type: String,
+      enum: SALES_LEAD_STATUSES,
+      default: "NEW",
+      required: true,
+    },
+    priority: {
+      type: String,
+      enum: SALES_LEAD_PRIORITIES,
+      default: "WARM",
+      required: true,
     },
     technologies: {
       type: [String],
@@ -77,6 +132,16 @@ const salesLeadSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    nextFollowUpDate: {
+      type: String,
+      trim: true,
+      default: "",
+    },
+    expectedCloseDate: {
+      type: String,
+      trim: true,
+      default: "",
+    },
     budget: {
       type: Number,
       default: 0,
@@ -92,11 +157,19 @@ const salesLeadSchema = new mongoose.Schema(
       trim: true,
       default: "",
     },
+    notes: {
+      type: String,
+      trim: true,
+      maxlength: 2000,
+      default: "",
+    },
   },
   baseSchemaOptions,
 );
 
 salesLeadSchema.index({ salesUserId: 1, createdAt: -1 });
+salesLeadSchema.index({ salesUserId: 1, status: 1, priority: 1 });
+salesLeadSchema.index({ salesUserId: 1, nextFollowUpDate: 1 });
 salesLeadSchema.index({ meetingDate: 1, meetingTime: 1 });
 salesLeadSchema.index({ clientEmail: 1, clientPhone: 1 });
 

@@ -11,7 +11,11 @@ export async function renderSalesDashboardPage(page: DashboardPageKey, session: 
       const data = await getEmployeesPageData(session);
       return (
         <EmployeesManagementPanel
+          salesLeadPriorityOptions={data.salesLeadPriorityOptions}
+          salesLeadSourceOptions={data.salesLeadSourceOptions}
+          salesLeadStatusOptions={data.salesLeadStatusOptions}
           salesLeadRows={data.salesLeadRows}
+          salesWorkspace={data.salesWorkspace}
           salesOnly
           salesOptions={data.salesOptions}
           salesTechnologyOptions={data.salesTechnologyOptions}

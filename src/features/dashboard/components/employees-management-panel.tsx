@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { useActionState, useEffect, useMemo, useState } from "react";
 import { createSalesLead, type SalesLeadFormState } from "@/features/dashboard/actions/sales-leads";
 import { createManagedUser, deleteManagedUser, updateManagedUserAccess } from "@/features/dashboard/actions/users";
+import { SalesWorkspacePanel } from "@/features/dashboard/components/sales-workspace-panel";
 import { emitDashboardSync } from "@/features/dashboard/lib/live-sync";
 import { Feedback } from "@/shared/ui/feedback";
 import { Button } from "@/shared/ui/button";
@@ -14,12 +15,17 @@ import type {
   EmployeeDirectoryEntry,
   EmployeeOption,
   SalesLeadEntry,
+  SalesWorkspaceData,
   SummaryCard,
 } from "@/features/dashboard/types";
 
 type EmployeesManagementPanelProps = {
   readOnly?: boolean;
+  salesLeadPriorityOptions: string[];
+  salesLeadSourceOptions: string[];
+  salesLeadStatusOptions: string[];
   salesLeadRows: SalesLeadEntry[];
+  salesWorkspace: SalesWorkspaceData;
   salesOnly?: boolean;
   salesOptions: EmployeeOption[];
   salesTechnologyOptions: string[];
@@ -30,7 +36,11 @@ const INITIAL_SALES_LEAD_STATE: SalesLeadFormState = {};
 
 export function EmployeesManagementPanel({
   readOnly = false,
+  salesLeadPriorityOptions,
+  salesLeadSourceOptions,
+  salesLeadStatusOptions,
   salesLeadRows,
+  salesWorkspace,
   salesOnly = false,
   salesOptions,
   salesTechnologyOptions,
@@ -44,9 +54,17 @@ export function EmployeesManagementPanel({
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [selectedUserId, setSelectedUserId] = useState(users[0]?.id ?? "");
   const salesLabelById = Object.fromEntries(salesOptions.map((salesUser) => [salesUser.id, salesUser.label]));
+  const salesSummaryCards = salesWorkspace.summaryCards.slice(0, 4);
   const totalTrackedBudget = salesLeadRows.reduce((sum, row) => sum + row.budget, 0);
   const totalPitchedValue = salesLeadRows.reduce((sum, row) => sum + row.pitchedPrice, 0);
   const todayMeetingCount = salesLeadRows.filter((row) => row.meetingDate === getTodayDate()).length;
+  const overdueFollowUps = salesWorkspace.followUps.filter(
+    (row) => row.status === "PENDING" && row.followUpDate && row.followUpDate < getTodayDate(),
+  ).length;
+  const openDealCount = salesWorkspace.deals.filter((row) => row.status === "OPEN").length;
+  const pendingCollectionValue = salesWorkspace.payments
+    .filter((row) => row.status === "PENDING" || row.status === "PARTIAL" || row.status === "OVERDUE")
+    .reduce((sum, row) => sum + Math.max(row.amount - row.receivedAmount, 0), 0);
   const techSummary = buildTechSummary(users);
 
   const filteredUsers = useMemo(() => {
@@ -71,7 +89,7 @@ export function EmployeesManagementPanel({
   const selectedUser = filteredUsers.find((user) => user.id === selectedUserId) ?? filteredUsers[0] ?? null;
   const canManageWorkspace = !readOnly && !salesOnly;
   const shouldShowDirectory = !salesOnly;
-  const shouldShowSalesTracker = salesOnly;
+  const shouldShowSalesTracker = salesOnly || salesOptions.length > 0 || salesLeadRows.length > 0;
 
   useEffect(() => {
     if (userState.success) {
@@ -467,20 +485,41 @@ export function EmployeesManagementPanel({
       ) : null}
 
       {shouldShowSalesTracker ? (
+        <SalesWorkspacePanel
+          canManageWorkspace={canManageWorkspace}
+          salesLeadPriorityOptions={salesLeadPriorityOptions}
+          salesLeadRows={salesLeadRows}
+          salesLeadSourceOptions={salesLeadSourceOptions}
+          salesLeadStatusOptions={salesLeadStatusOptions}
+          salesOnly={salesOnly}
+          salesOptions={salesOptions}
+          salesTechnologyOptions={salesTechnologyOptions}
+          salesWorkspace={salesWorkspace}
+        />
+      ) : null}
+
+      {false ? (
         <PanelSection
-        description={
-          salesOnly
-            ? "Your sales login ke client records yahan visible hain. Sirf aapke assigned leads aur meeting commitments dikh rahe hain."
-            : "Desktop-friendly sales CRM register for client contact details, technology scope, meeting planning, commercial discussion, and expected delivery date."
-        }
-        eyebrow={salesOnly ? "My Leads" : "Sales Pipeline"}
-        title={salesOnly ? "My Client Pitch Tracker" : "Client Pitch Tracker"}
-      >
+          description={
+            salesOnly
+              ? "Aapke sales login ke leads, follow-ups, deals, payments aur target progress yahan visible hain."
+              : "Sales workspace me lead intake, follow-up planning, deal conversion, payment collection aur target tracking ko ek jagah organize kiya gaya hai."
+          }
+          eyebrow={salesOnly ? "My Pipeline" : "Sales Pipeline"}
+          title={salesOnly ? "My Sales Workspace" : "Sales Workspace"}
+        >
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          <OverviewCard detail="Client records currently tracked for the sales team." label="Tracked Clients" value={String(salesLeadRows.length)} />
-          <OverviewCard detail="Sales meetings scheduled for today." label="Meetings Today" value={String(todayMeetingCount)} />
-          <OverviewCard detail="Total client budget captured across all records." label="Client Budget" value={formatCurrency(totalTrackedBudget)} />
-          <OverviewCard detail="Total value already pitched by the team." label="Quoted Value" value={formatCurrency(totalPitchedValue)} />
+          {(salesSummaryCards.length
+            ? salesSummaryCards
+            : [
+                { label: "Tracked Clients", value: String(salesLeadRows.length), detail: "Sales lead register me current rows." },
+                { label: "Meetings Today", value: String(todayMeetingCount), detail: "Today scheduled sales meetings." },
+                { label: "Client Budget", value: formatCurrency(totalTrackedBudget), detail: "Captured client budget across records." },
+                { label: "Quoted Value", value: formatCurrency(totalPitchedValue), detail: "Total value already pitched." },
+              ]
+          ).map((card) => (
+            <OverviewCard detail={card.detail} key={card.label} label={card.label} value={card.value} />
+          ))}
         </div>
 
         {canManageWorkspace ? (
@@ -512,18 +551,46 @@ export function EmployeesManagementPanel({
                 />
 
                 <div className="grid gap-4 md:grid-cols-2">
+                  <Field defaultValue={salesLeadState.values?.companyName} label="Company Name" name="companyName" placeholder="Enter company name" required={false} />
                   <Field defaultValue={salesLeadState.values?.clientName} label="Client Name" name="clientName" placeholder="Enter client name" />
-                  <Field defaultValue={salesLeadState.values?.clientPhone} label="Client Mobile" name="clientPhone" placeholder="Enter client mobile number" />
                 </div>
 
-                <Field
-                  autoComplete="off"
-                  defaultValue={salesLeadState.values?.clientEmail}
-                  label="Client Email"
-                  name="clientEmail"
-                  placeholder="Enter client email"
-                  type="email"
-                />
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field defaultValue={salesLeadState.values?.clientPhone} label="Client Mobile" name="clientPhone" placeholder="Enter client mobile number" required={false} />
+                  <Field
+                    autoComplete="off"
+                    defaultValue={salesLeadState.values?.clientEmail}
+                    label="Client Email"
+                    name="clientEmail"
+                    placeholder="Enter client email"
+                    required={false}
+                    type="email"
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-3">
+                  <SelectField
+                    defaultValue={salesLeadState.values?.source ?? salesLeadSourceOptions[0] ?? ""}
+                    label="Lead Source"
+                    name="source"
+                    options={salesLeadSourceOptions}
+                    required
+                  />
+                  <SelectField
+                    defaultValue={salesLeadState.values?.status ?? "NEW"}
+                    label="Lead Status"
+                    name="status"
+                    options={salesLeadStatusOptions}
+                    required
+                  />
+                  <SelectField
+                    defaultValue={salesLeadState.values?.priority ?? "WARM"}
+                    label="Priority"
+                    name="priority"
+                    options={salesLeadPriorityOptions}
+                    required
+                  />
+                </div>
 
                 <MultiSelectField
                   defaultValue={salesLeadState.values?.technologies ?? []}
@@ -533,7 +600,7 @@ export function EmployeesManagementPanel({
                   options={salesTechnologyOptions}
                 />
 
-                <Field defaultValue={salesLeadState.values?.meetingLink} label="Meeting Link" name="meetingLink" placeholder="https://meet.google.com/..." />
+                <Field defaultValue={salesLeadState.values?.meetingLink} label="Meeting Link" name="meetingLink" placeholder="https://meet.google.com/..." required={false} />
 
                 <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                   <Field
@@ -542,29 +609,58 @@ export function EmployeesManagementPanel({
                     label="Meeting Date"
                     name="meetingDate"
                     placeholder="Select meeting date"
+                    required={false}
                     type="date"
                   />
-                  <Field defaultValue={salesLeadState.values?.meetingTime} label="Meeting Time" name="meetingTime" placeholder="10:30 AM" type="time" />
+                  <Field defaultValue={salesLeadState.values?.meetingTime} label="Meeting Time" name="meetingTime" placeholder="10:30 AM" required={false} type="time" />
                   <Field
-                    defaultValue={salesLeadState.values?.deliveryDate}
+                    defaultValue={salesLeadState.values?.nextFollowUpDate}
                     fallbackTodayForDate
-                    label="Delivery Date"
-                    name="deliveryDate"
-                    placeholder="Select delivery date"
+                    label="Next Follow-up"
+                    name="nextFollowUpDate"
+                    placeholder="Select follow-up date"
+                    required={false}
                     type="date"
                   />
                 </div>
 
                 <div className="grid gap-4 md:grid-cols-2">
-                  <Field defaultValue={salesLeadState.values?.budget} label="Client Budget" name="budget" placeholder="Enter client budget" type="number" />
+                  <Field
+                    defaultValue={salesLeadState.values?.expectedCloseDate}
+                    label="Expected Close"
+                    name="expectedCloseDate"
+                    placeholder="Select expected close date"
+                    required={false}
+                    type="date"
+                  />
+                  <Field
+                    defaultValue={salesLeadState.values?.deliveryDate}
+                    label="Delivery Date"
+                    name="deliveryDate"
+                    placeholder="Select delivery date"
+                    required={false}
+                    type="date"
+                  />
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <Field defaultValue={salesLeadState.values?.budget} label="Client Budget" name="budget" placeholder="Enter client budget" required={false} type="number" />
                   <Field
                     defaultValue={salesLeadState.values?.pitchedPrice}
                     label="Pitched Price"
                     name="pitchedPrice"
                     placeholder="Enter quoted price"
+                    required={false}
                     type="number"
                   />
                 </div>
+
+                <TextAreaField
+                  defaultValue={salesLeadState.values?.notes}
+                  label="Sales Notes"
+                  name="notes"
+                  placeholder="Call notes, objections, proposal details, next action..."
+                />
 
                 <Button className="mt-2 min-w-44 sm:w-auto" disabled={salesLeadPending || salesOptions.length === 0} type="submit">
                   {salesLeadPending ? "Saving..." : "Save Sales Record"}
@@ -578,25 +674,25 @@ export function EmployeesManagementPanel({
                   label="Sales Team"
                   value={String(salesOptions.length)}
                   tone="blue"
-                  detail="Active sales employees available for new client conversations."
+                  detail="Active sales employees available for client handling."
                 />
                 <MetricCard
-                  label="Meeting Pipeline"
-                  value={String(salesLeadRows.filter((row) => row.meetingDate).length)}
+                  label="Meetings Today"
+                  value={String(todayMeetingCount)}
                   tone="amber"
-                  detail="Rows where meeting date has already been planned."
+                  detail="Sales meetings scheduled for the current day."
                 />
                 <MetricCard
-                  label="Budget Gap"
-                  value={formatCurrency(Math.max(totalPitchedValue - totalTrackedBudget, 0))}
+                  label="Pending Collection"
+                  value={formatCurrency(pendingCollectionValue)}
                   tone="emerald"
-                  detail="Value currently pitched above the captured client budgets."
+                  detail="Outstanding amount still waiting to be collected."
                 />
                 <MetricCard
-                  label="Upcoming Deliveries"
-                  value={String(salesLeadRows.filter((row) => row.deliveryDate >= getTodayDate()).length)}
+                  label="Overdue Follow-ups"
+                  value={String(overdueFollowUps)}
                   tone="violet"
-                  detail="Client records with planned delivery dates still ahead."
+                  detail="Pending follow-ups already due before today."
                 />
               </div>
 
@@ -604,15 +700,24 @@ export function EmployeesManagementPanel({
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">Pipeline Note</p>
-                    <p className="mt-2 text-lg font-semibold text-slate-950">Commercial and delivery commitments in one place.</p>
+                    <p className="mt-2 text-lg font-semibold text-slate-950">Lead, follow-up, deal aur collection ko ek hi workflow me rakho.</p>
                   </div>
                   <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    {salesLeadRows.length ? `${salesLeadRows.length} row(s)` : "No rows yet"}
+                    {salesLeadRows.length ? `${salesLeadRows.length} lead(s)` : "No leads yet"}
                   </span>
                 </div>
-                <p className="mt-4 text-sm leading-6 text-slate-600">
-                  Client name, meeting plan, quoted price, and delivery promise ek hi desktop table me rahega, taaki sales aur admin dono fast review kar saken.
-                </p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Open Deals</p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-950">{openDealCount}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">Proposal aur negotiation phase me chal rahe commercial opportunities.</p>
+                  </div>
+                  <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-4">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">Quoted Value</p>
+                    <p className="mt-2 text-2xl font-semibold text-slate-950">{formatCurrency(totalPitchedValue)}</p>
+                    <p className="mt-2 text-sm leading-6 text-slate-600">Sales team ne ab tak leads par kitni commercial value quote ki hai.</p>
+                  </div>
+                </div>
               </div>
             </section>
           </div>
@@ -622,14 +727,12 @@ export function EmployeesManagementPanel({
           <DashboardTable
             columns={[
               { label: "Sales Rep", className: "min-w-[180px]" },
-              { label: "Client", className: "min-w-[210px]" },
-              { label: "Tech Scope", className: "min-w-[220px]" },
-              { label: "Meeting", className: "min-w-[230px]" },
-              { label: "Budget", className: "min-w-[110px]" },
-              { label: "Pitch", className: "min-w-[110px]" },
-              { label: "Delivery", className: "min-w-[120px]" },
+              { label: "Client", className: "min-w-[220px]" },
+              { label: "Source / Status", className: "min-w-[220px]" },
+              { label: "Follow-up", className: "min-w-[230px]" },
+              { label: "Commercial", className: "min-w-[220px]" },
             ]}
-            emptyMessage="Sales client records will appear here after the first pitch entry is created."
+            emptyMessage="Sales lead records will appear here after the first pipeline entry is created."
             hasRows={salesLeadRows.length > 0}
             hideScrollbar
           >
@@ -640,29 +743,27 @@ export function EmployeesManagementPanel({
                   <p className="mt-1 text-xs text-slate-500">{row.salesUserEmail || "Sales email not added"}</p>
                 </DashboardTableCell>
                 <DashboardTableCell>
-                  <p className="font-semibold text-slate-950">{row.clientName}</p>
+                  <p className="font-semibold text-slate-950">{row.companyName || row.clientName}</p>
+                  <p className="mt-1 text-sm text-slate-600">{row.companyName ? row.clientName : row.clientEmail || "Client email not added"}</p>
                   <div className="mt-2 space-y-1 text-xs text-slate-500">
                     <p>{row.clientPhone || "Phone not added"}</p>
-                    <p>{row.clientEmail || "Email not added"}</p>
+                    {row.technologies.length ? <p>{row.technologies.join(", ")}</p> : <p>Technology scope not selected</p>}
                   </div>
                 </DashboardTableCell>
                 <DashboardTableCell>
                   <div className="flex flex-wrap gap-2">
-                    {row.technologies.map((technology) => (
-                      <span
-                        className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.15em] text-blue-700"
-                        key={`${row.id}-${technology}`}
-                      >
-                        {technology}
-                      </span>
-                    ))}
+                    <Pill label={row.source} tone="blue" />
+                    <Pill label={row.status.replaceAll("_", " ")} tone={row.status === "WON" ? "emerald" : row.status === "LOST" ? "rose" : "amber"} />
+                    <Pill label={row.priority} tone={row.priority === "HOT" ? "rose" : row.priority === "COLD" ? "slate" : "violet"} />
                   </div>
+                  <p className="mt-3 text-xs text-slate-500">Created {row.createdAt}</p>
+                  <p className="mt-1 text-sm leading-6 text-slate-600">{row.notes || "No sales note added yet."}</p>
                 </DashboardTableCell>
                 <DashboardTableCell>
                   <div className="space-y-2">
                     <div className="rounded-2xl border border-slate-200 bg-slate-50 px-3 py-3">
                       <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">
-                        {row.meetingDate || "Date pending"} {row.meetingTime ? `• ${row.meetingTime}` : ""}
+                        Meeting {row.meetingDate || "pending"} {row.meetingTime ? `• ${row.meetingTime}` : ""}
                       </p>
                       {row.meetingLink ? (
                         <a className="mt-2 inline-flex text-sm font-semibold text-blue-700 underline-offset-4 hover:underline" href={row.meetingLink} rel="noreferrer" target="_blank">
@@ -672,23 +773,158 @@ export function EmployeesManagementPanel({
                         <p className="mt-2 text-sm text-slate-500">Meeting link not added</p>
                       )}
                     </div>
+                    <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3">
+                      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">Next Follow-up</p>
+                      <p className="mt-2 text-sm font-medium text-slate-900">{row.nextFollowUpDate || "Not scheduled"}</p>
+                      <p className="mt-1 text-xs text-slate-500">Expected close {row.expectedCloseDate || "not fixed"}</p>
+                    </div>
                   </div>
                 </DashboardTableCell>
                 <DashboardTableCell>
                   <p className="font-semibold text-slate-950">{formatCurrency(row.budget)}</p>
                   <p className="mt-1 text-xs text-slate-500">Client budget</p>
-                </DashboardTableCell>
-                <DashboardTableCell>
-                  <p className="font-semibold text-slate-950">{formatCurrency(row.pitchedPrice)}</p>
+                  <p className="mt-4 font-semibold text-slate-950">{formatCurrency(row.pitchedPrice)}</p>
                   <p className="mt-1 text-xs text-slate-500">Quoted by team</p>
-                </DashboardTableCell>
-                <DashboardTableCell>
-                  <p className="font-semibold text-slate-950">{row.deliveryDate || "Not fixed"}</p>
+                  <p className="mt-4 text-sm font-medium text-slate-900">{row.deliveryDate || "Delivery not fixed"}</p>
                   <p className="mt-1 text-xs text-slate-500">Planned handover</p>
                 </DashboardTableCell>
               </tr>
             ))}
           </DashboardTable>
+        </div>
+
+        <div className="mt-6 grid gap-6 xl:grid-cols-2">
+          <PipelineTableSection
+            columns={[
+              { label: "Client", className: "min-w-[180px]" },
+              { label: "Follow-up", className: "min-w-[160px]" },
+              { label: "Status", className: "min-w-[140px]" },
+            ]}
+            description="Today and upcoming contact commitments."
+            emptyMessage="No follow-up queue is available yet."
+            eyebrow="Follow-up Queue"
+            hasRows={salesWorkspace.followUps.length > 0}
+            title="Follow-ups"
+          >
+            {salesWorkspace.followUps.map((row) => (
+              <tr key={row.id}>
+                <DashboardTableCell>
+                  <p className="font-semibold text-slate-950">{row.clientName}</p>
+                  <p className="mt-1 text-xs text-slate-500">{row.salesUserName}</p>
+                </DashboardTableCell>
+                <DashboardTableCell>
+                  <p className="font-medium text-slate-900">{row.followUpDate}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {row.followUpTime || "Time not fixed"} • {row.channel}
+                  </p>
+                </DashboardTableCell>
+                <DashboardTableCell>
+                  <Pill label={row.status} tone={row.status === "COMPLETED" ? "emerald" : row.status === "MISSED" ? "rose" : "amber"} />
+                  <p className="mt-2 text-xs leading-5 text-slate-500">{row.outcome || "Outcome note pending"}</p>
+                </DashboardTableCell>
+              </tr>
+            ))}
+          </PipelineTableSection>
+
+          <PipelineTableSection
+            columns={[
+              { label: "Deal", className: "min-w-[200px]" },
+              { label: "Stage", className: "min-w-[140px]" },
+              { label: "Value", className: "min-w-[160px]" },
+            ]}
+            description="Proposal se closure tak active commercial opportunities."
+            emptyMessage="No deal records are available yet."
+            eyebrow="Deal Tracker"
+            hasRows={salesWorkspace.deals.length > 0}
+            title="Deals"
+          >
+            {salesWorkspace.deals.map((row) => (
+              <tr key={row.id}>
+                <DashboardTableCell>
+                  <p className="font-semibold text-slate-950">{row.title}</p>
+                  <p className="mt-1 text-xs text-slate-500">{row.salesUserName}</p>
+                </DashboardTableCell>
+                <DashboardTableCell>
+                  <Pill label={row.stage.replaceAll("_", " ")} tone={row.status === "WON" ? "emerald" : row.status === "LOST" ? "rose" : "blue"} />
+                  <p className="mt-2 text-xs text-slate-500">Status {row.status.replaceAll("_", " ")}</p>
+                </DashboardTableCell>
+                <DashboardTableCell>
+                  <p className="font-semibold text-slate-950">{formatCurrency(row.amount)}</p>
+                  <p className="mt-1 text-xs text-slate-500">{row.probability}% probability</p>
+                  <p className="mt-2 text-xs text-slate-500">Close {row.expectedCloseDate || "not fixed"}</p>
+                </DashboardTableCell>
+              </tr>
+            ))}
+          </PipelineTableSection>
+        </div>
+
+        <div className="mt-6 grid gap-6 xl:grid-cols-2">
+          <PipelineTableSection
+            columns={[
+              { label: "Invoice", className: "min-w-[160px]" },
+              { label: "Due", className: "min-w-[150px]" },
+              { label: "Collection", className: "min-w-[180px]" },
+            ]}
+            description="Pending, partial aur overdue payment visibility."
+            emptyMessage="No payment tracker records are available yet."
+            eyebrow="Collections"
+            hasRows={salesWorkspace.payments.length > 0}
+            title="Payments"
+          >
+            {salesWorkspace.payments.map((row) => (
+              <tr key={row.id}>
+                <DashboardTableCell>
+                  <p className="font-semibold text-slate-950">{row.invoiceNumber || "Invoice pending"}</p>
+                  <p className="mt-1 text-xs text-slate-500">{row.salesUserName}</p>
+                </DashboardTableCell>
+                <DashboardTableCell>
+                  <p className="font-medium text-slate-900">{row.dueDate || "No due date"}</p>
+                  <p className="mt-1 text-xs text-slate-500">Received {row.receivedDate || "not yet"}</p>
+                </DashboardTableCell>
+                <DashboardTableCell>
+                  <p className="font-semibold text-slate-950">{formatCurrency(row.amount)}</p>
+                  <p className="mt-1 text-xs text-slate-500">Received {formatCurrency(row.receivedAmount)}</p>
+                  <div className="mt-2">
+                    <Pill label={row.status} tone={row.status === "PAID" ? "emerald" : row.status === "OVERDUE" ? "rose" : "amber"} />
+                  </div>
+                </DashboardTableCell>
+              </tr>
+            ))}
+          </PipelineTableSection>
+
+          <PipelineTableSection
+            columns={[
+              { label: "Sales Rep", className: "min-w-[180px]" },
+              { label: "Month", className: "min-w-[140px]" },
+              { label: "Progress", className: "min-w-[200px]" },
+            ]}
+            description="Monthly target, achieved amount aur incentive snapshot."
+            emptyMessage="No sales targets have been created yet."
+            eyebrow="Targets"
+            hasRows={salesWorkspace.targets.length > 0}
+            title="Target Tracker"
+          >
+            {salesWorkspace.targets.map((row) => (
+              <tr key={row.id}>
+                <DashboardTableCell>
+                  <p className="font-semibold text-slate-950">{row.salesUserName}</p>
+                  <p className="mt-1 text-xs text-slate-500">Incentive {formatCurrency(row.incentiveAmount)}</p>
+                </DashboardTableCell>
+                <DashboardTableCell>
+                  <p className="font-medium text-slate-900">{row.monthKey}</p>
+                  <div className="mt-2">
+                    <Pill label={row.status} tone={row.status === "ACHIEVED" ? "emerald" : row.status === "MISSED" ? "rose" : "blue"} />
+                  </div>
+                </DashboardTableCell>
+                <DashboardTableCell>
+                  <p className="font-semibold text-slate-950">{row.achievementRate}%</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {formatCurrency(row.achievedAmount)} / {formatCurrency(row.targetAmount)}
+                  </p>
+                </DashboardTableCell>
+              </tr>
+            ))}
+          </PipelineTableSection>
         </div>
       </PanelSection>
         ) : null}
@@ -779,11 +1015,22 @@ type FieldProps = {
   label: string;
   name: string;
   placeholder: string;
+  required?: boolean;
   type?: string;
 };
 
-function Field({ autoComplete, defaultValue, fallbackTodayForDate = false, label, name, placeholder, type = "text" }: FieldProps) {
+function Field({
+  autoComplete,
+  defaultValue,
+  fallbackTodayForDate = false,
+  label,
+  name,
+  placeholder,
+  required,
+  type = "text",
+}: FieldProps) {
   const resolvedDefaultValue = type === "date" && fallbackTodayForDate ? (defaultValue || getTodayDate()) : defaultValue;
+  const resolvedRequired = required ?? (type !== "date" || name !== "joiningDate");
 
   return (
     <label className="block">
@@ -796,7 +1043,7 @@ function Field({ autoComplete, defaultValue, fallbackTodayForDate = false, label
         defaultValue={resolvedDefaultValue}
         name={name}
         placeholder={placeholder}
-        required={type !== "date" || name !== "joiningDate"}
+        required={resolvedRequired}
         type={type}
       />
     </label>
@@ -893,6 +1140,88 @@ function MultiSelectField({
       </select>
       {helperText ? <span className="mt-2 block text-xs text-slate-500">{helperText}</span> : null}
     </label>
+  );
+}
+
+function TextAreaField({
+  defaultValue,
+  label,
+  name,
+  placeholder,
+}: {
+  defaultValue?: string;
+  label: string;
+  name: string;
+  placeholder: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-slate-700">{label}</span>
+      <textarea
+        className="min-h-28 w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-slate-900 outline-none"
+        defaultValue={defaultValue}
+        name={name}
+        placeholder={placeholder}
+      />
+    </label>
+  );
+}
+
+function PipelineTableSection({
+  children,
+  columns,
+  description,
+  emptyMessage,
+  eyebrow,
+  hasRows,
+  title,
+}: {
+  children: ReactNode;
+  columns: Array<{ label: string; className?: string }>;
+  description: string;
+  emptyMessage: string;
+  eyebrow: string;
+  hasRows: boolean;
+  title: string;
+}) {
+  return (
+    <section className="rounded-[1.7rem] border border-slate-100 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.04)]">
+      <p className="text-xs font-semibold uppercase tracking-[0.22em] text-blue-500">{eyebrow}</p>
+      <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">{title}</h3>
+      <p className="mt-3 text-sm leading-6 text-slate-600">{description}</p>
+      <div className="mt-5">
+        <DashboardTable columns={columns} emptyMessage={emptyMessage} hasRows={hasRows} hideScrollbar>
+          {children}
+        </DashboardTable>
+      </div>
+    </section>
+  );
+}
+
+function Pill({
+  label,
+  tone,
+}: {
+  label: string;
+  tone: "amber" | "blue" | "emerald" | "rose" | "slate" | "violet";
+}) {
+  const className =
+    tone === "amber"
+      ? "border-amber-100 bg-amber-50 text-amber-700"
+      : tone === "emerald"
+        ? "border-emerald-100 bg-emerald-50 text-emerald-700"
+        : tone === "rose"
+          ? "border-rose-100 bg-rose-50 text-rose-700"
+          : tone === "slate"
+            ? "border-slate-200 bg-slate-100 text-slate-700"
+            : tone === "violet"
+              ? "border-violet-100 bg-violet-50 text-violet-700"
+              : "border-blue-100 bg-blue-50 text-blue-700";
+
+  return (
+    <span className={`rounded-full border px-3 py-1 text-[0.68rem] font-semibold uppercase tracking-[0.15em] ${className}`}>
+      {label}
+    </span>
   );
 }
 

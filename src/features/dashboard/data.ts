@@ -7,7 +7,18 @@ import { AttendanceModel } from "@/database/mongodb/models/attendance";
 import { DailyUpdateModel } from "@/database/mongodb/models/daily-update";
 import { LeaveRequestModel } from "@/database/mongodb/models/leave-request";
 import { ProjectModel } from "@/database/mongodb/models/project";
-import { SALES_TECH_OPTIONS, SalesLeadModel } from "@/database/mongodb/models/sales-lead";
+import { SalesCustomerModel } from "@/database/mongodb/models/sales-customer";
+import { SalesDealModel } from "@/database/mongodb/models/sales-deal";
+import { SalesFollowUpModel } from "@/database/mongodb/models/sales-follow-up";
+import {
+  SALES_LEAD_PRIORITIES,
+  SALES_LEAD_SOURCES,
+  SALES_LEAD_STATUSES,
+  SALES_TECH_OPTIONS,
+  SalesLeadModel,
+} from "@/database/mongodb/models/sales-lead";
+import { SalesPaymentModel } from "@/database/mongodb/models/sales-payment";
+import { SalesTargetModel } from "@/database/mongodb/models/sales-target";
 import { SettingModel } from "@/database/mongodb/models/setting";
 import { TASK_LABELS, TaskModel } from "@/database/mongodb/models/task";
 import { UserModel } from "@/database/mongodb/models/user";
@@ -24,6 +35,13 @@ import type {
   PerformanceScoreRow,
   ProjectsPageData,
   ReportsPageData,
+  SalesCustomerEntry,
+  SalesDealEntry,
+  SalesFollowUpEntry,
+  SalesLeadEntry,
+  SalesPaymentEntry,
+  SalesTargetEntry,
+  SalesWorkspaceData,
   SettingsPageData,
   TaskPageData,
 } from "@/features/dashboard/types";
@@ -58,7 +76,13 @@ export type {
   PerformanceScoreRow,
   ProjectsPageData,
   ReportsPageData,
+  SalesCustomerEntry,
+  SalesDealEntry,
+  SalesFollowUpEntry,
   SalesLeadEntry,
+  SalesPaymentEntry,
+  SalesTargetEntry,
+  SalesWorkspaceData,
   SettingsPageData,
   SummaryCard,
   TaskCommentView,
@@ -324,10 +348,26 @@ export async function getEmployeesPageData(session?: AuthenticatedSession): Prom
   ).sort({ createdAt: -1 }).lean();
 
   const updatesFilter = hasAdminLikeAccess ? {} : { userId: { $in: [] } };
+  const salesScopeFilter = hasAdminLikeAccess ? {} : isSalesSelfView ? { salesUserId: session.user.id } : { _id: { $in: [] } };
   const today = getTodayDate();
   const employeeIds = users.filter((user) => user.role === "EMPLOYEE" && user.status === "ACTIVE").map((user) => user._id.toString());
 
-  const [projects, updates, managerUsers, salesUsers, salesLeads, todayAttendance, todayLeaves, userMap, managerMap] = await Promise.all([
+  const [
+    projects,
+    updates,
+    managerUsers,
+    salesUsers,
+    salesLeads,
+    salesCustomers,
+    salesFollowUps,
+    salesDeals,
+    salesPayments,
+    salesTargets,
+    todayAttendance,
+    todayLeaves,
+    userMap,
+    managerMap,
+  ] = await Promise.all([
     ProjectModel.find(
       hasAdminLikeAccess ? {} : isSalesSelfView ? { assignedUserIds: session.user.id } : { _id: { $in: [] } },
       { name: 1, summary: 1, status: 1, priority: 1, dueDate: 1, techStack: 1, assignedUserIds: 1, createdByUserId: 1 },
@@ -337,7 +377,12 @@ export async function getEmployeesPageData(session?: AuthenticatedSession): Prom
     DailyUpdateModel.find(updatesFilter, { userId: 1, projectId: 1, workDate: 1, summary: 1, accomplishments: 1, blockers: 1, nextPlan: 1, attachments: 1 }).sort({ createdAt: -1 }).limit(8).lean(),
     UserModel.find({ role: "MANAGER", status: "ACTIVE" }, { fullName: 1, email: 1 }).sort({ fullName: 1 }).lean(),
     UserModel.find({ role: "SALES", status: "ACTIVE" }, { fullName: 1, email: 1 }).sort({ fullName: 1 }).lean(),
-    SalesLeadModel.find(hasAdminLikeAccess ? {} : isSalesSelfView ? { salesUserId: session.user.id } : { _id: { $in: [] } }).sort({ createdAt: -1 }).lean(),
+    SalesLeadModel.find(salesScopeFilter).sort({ createdAt: -1 }).lean(),
+    SalesCustomerModel.find(salesScopeFilter).sort({ updatedAt: -1 }).limit(10).lean(),
+    SalesFollowUpModel.find(salesScopeFilter).sort({ followUpDate: 1, followUpTime: 1, createdAt: -1 }).limit(12).lean(),
+    SalesDealModel.find(salesScopeFilter).sort({ updatedAt: -1 }).limit(12).lean(),
+    SalesPaymentModel.find(salesScopeFilter).sort({ dueDate: 1, updatedAt: -1 }).limit(12).lean(),
+    SalesTargetModel.find(salesScopeFilter).sort({ monthKey: -1, createdAt: -1 }).limit(6).lean(),
     AttendanceModel.find({ userId: inScope(employeeIds), dateKey: today }, { userId: 1 }).lean(),
     LeaveRequestModel.find(
       { userId: inScope(employeeIds), status: "APPROVED", startDate: { $lte: today }, endDate: { $gte: today } },
@@ -359,15 +404,109 @@ export async function getEmployeesPageData(session?: AuthenticatedSession): Prom
   const onLeaveTodayCount = Array.from(onLeaveTodayIds).filter((userId) => !presentTodayIds.has(userId)).length;
   const notMarkedTodayCount = Math.max(employeeCount - presentTodayCount - onLeaveTodayCount, 0);
   const assignedManagerCount = users.filter((user) => (user.role === "EMPLOYEE" || user.role === "SALES") && user.managerId).length;
+  const salesLeadRows: SalesLeadEntry[] = salesLeads.map((lead) => ({
+    id: lead._id.toString(),
+    salesUserId: lead.salesUserId,
+    salesUserName: salesUserMap.get(lead.salesUserId)?.fullName ?? "Unknown sales employee",
+    salesUserEmail: salesUserMap.get(lead.salesUserId)?.email ?? "",
+    companyName: lead.companyName ?? "",
+    clientName: lead.clientName,
+    clientPhone: lead.clientPhone ?? "",
+    clientEmail: lead.clientEmail ?? "",
+    source: lead.source ?? "Website",
+    status: lead.status ?? "NEW",
+    priority: lead.priority ?? "WARM",
+    technologies: lead.technologies ?? [],
+    meetingLink: lead.meetingLink ?? "",
+    meetingDate: lead.meetingDate ?? "",
+    meetingTime: lead.meetingTime ?? "",
+    nextFollowUpDate: lead.nextFollowUpDate ?? "",
+    expectedCloseDate: lead.expectedCloseDate ?? "",
+    budget: Number(lead.budget ?? 0),
+    pitchedPrice: Number(lead.pitchedPrice ?? 0),
+    deliveryDate: lead.deliveryDate ?? "",
+    notes: lead.notes ?? "",
+    createdAt: formatDate(lead.createdAt),
+  }));
+  const salesCustomerRows: SalesCustomerEntry[] = salesCustomers.map((customer) => ({
+    id: customer._id.toString(),
+    salesUserId: customer.salesUserId,
+    salesUserName: salesUserMap.get(customer.salesUserId)?.fullName ?? "Unknown sales employee",
+    companyName: customer.companyName ?? "",
+    clientName: customer.clientName,
+    clientEmail: customer.clientEmail ?? "",
+    status: customer.status,
+    lastContactDate: customer.lastContactDate ?? "",
+    totalBilledAmount: Number(customer.totalBilledAmount ?? 0),
+    outstandingAmount: Number(customer.outstandingAmount ?? 0),
+  }));
+  const salesFollowUpRows: SalesFollowUpEntry[] = salesFollowUps.map((followUp) => ({
+    id: followUp._id.toString(),
+    salesUserId: followUp.salesUserId,
+    salesUserName: salesUserMap.get(followUp.salesUserId)?.fullName ?? "Unknown sales employee",
+    clientName: followUp.clientName,
+    leadId: followUp.salesLeadId ?? "",
+    followUpDate: followUp.followUpDate,
+    followUpTime: followUp.followUpTime ?? "",
+    channel: followUp.channel,
+    status: followUp.status,
+    outcome: followUp.outcome ?? "",
+    nextFollowUpDate: followUp.nextFollowUpDate ?? "",
+  }));
+  const salesDealRows: SalesDealEntry[] = salesDeals.map((deal) => ({
+    id: deal._id.toString(),
+    salesUserId: deal.salesUserId,
+    salesUserName: salesUserMap.get(deal.salesUserId)?.fullName ?? "Unknown sales employee",
+    title: deal.title,
+    leadId: deal.salesLeadId ?? "",
+    customerId: deal.customerId ?? "",
+    stage: deal.stage,
+    status: deal.status,
+    amount: Number(deal.amount ?? 0),
+    probability: Number(deal.probability ?? 0),
+    expectedCloseDate: deal.expectedCloseDate ?? "",
+  }));
+  const salesPaymentRows: SalesPaymentEntry[] = salesPayments.map((payment) => ({
+    id: payment._id.toString(),
+    salesUserId: payment.salesUserId,
+    salesUserName: salesUserMap.get(payment.salesUserId)?.fullName ?? "Unknown sales employee",
+    invoiceNumber: payment.invoiceNumber ?? "",
+    customerId: payment.customerId ?? "",
+    dealId: payment.dealId ?? "",
+    amount: Number(payment.amount ?? 0),
+    receivedAmount: Number(payment.receivedAmount ?? 0),
+    dueDate: payment.dueDate ?? "",
+    receivedDate: payment.receivedDate ?? "",
+    status: payment.status,
+  }));
+  const salesTargetRows: SalesTargetEntry[] = salesTargets.map((target) => {
+    const targetAmount = Number(target.targetAmount ?? 0);
+    const achievedAmount = Number(target.achievedAmount ?? 0);
+
+    return {
+      id: target._id.toString(),
+      salesUserId: target.salesUserId,
+      salesUserName: salesUserMap.get(target.salesUserId)?.fullName ?? "Unknown sales employee",
+      monthKey: target.monthKey,
+      targetAmount,
+      achievedAmount,
+      incentiveAmount: Number(target.incentiveAmount ?? 0),
+      status: target.status,
+      achievementRate: targetAmount > 0 ? Math.round((achievedAmount / targetAmount) * 100) : 0,
+    };
+  });
+  const salesWorkspace = buildSalesWorkspaceData({
+    customers: salesCustomerRows,
+    deals: salesDealRows,
+    followUps: salesFollowUpRows,
+    leads: salesLeadRows,
+    payments: salesPaymentRows,
+    targets: salesTargetRows,
+    today,
+  });
   const workforceSummaryCards =
     isSalesSelfView
-      ? [
-          { label: "Tracked Clients", value: String(salesLeads.length), detail: "Client records assigned to your sales login." },
-          { label: "Meetings Today", value: String(salesLeads.filter((lead) => lead.meetingDate === today).length), detail: "Client meetings scheduled for today." },
-          { label: "Client Budget", value: formatCurrency(salesLeads.reduce((sum, lead) => sum + Number(lead.budget ?? 0), 0)), detail: "Total client budgets captured in your records." },
-          { label: "Quoted Value", value: formatCurrency(salesLeads.reduce((sum, lead) => sum + Number(lead.pitchedPrice ?? 0), 0)), detail: "Total value already pitched by you." },
-          { label: "Upcoming Deliveries", value: String(salesLeads.filter((lead) => (lead.deliveryDate ?? "") >= today).length), detail: "Client rows with delivery dates still ahead." },
-        ]
+      ? salesWorkspace.summaryCards
       : session?.user.role === "SUPER_ADMIN"
       ? [
           { label: "Total Employees", value: String(employeeCount), detail: "Active employee accounts currently available in the company." },
@@ -394,6 +533,9 @@ export async function getEmployeesPageData(session?: AuthenticatedSession): Prom
       label: `${salesUser.fullName} (${salesUser.email})`,
     })),
     salesTechnologyOptions: [...SALES_TECH_OPTIONS],
+    salesLeadSourceOptions: [...SALES_LEAD_SOURCES],
+    salesLeadStatusOptions: [...SALES_LEAD_STATUSES],
+    salesLeadPriorityOptions: [...SALES_LEAD_PRIORITIES],
     summaryCards: workforceSummaryCards,
     users: users.map((user) => ({
       id: user._id.toString(),
@@ -432,23 +574,8 @@ export async function getEmployeesPageData(session?: AuthenticatedSession): Prom
       assignedUserNames: (project.assignedUserIds ?? []).map((userId) => userMap.get(userId)?.fullName ?? "Assigned employee"),
       createdByUserId: project.createdByUserId ?? "",
     })),
-    salesLeadRows: salesLeads.map((lead) => ({
-      id: lead._id.toString(),
-      salesUserId: lead.salesUserId,
-      salesUserName: salesUserMap.get(lead.salesUserId)?.fullName ?? "Unknown sales employee",
-      salesUserEmail: salesUserMap.get(lead.salesUserId)?.email ?? "",
-      clientName: lead.clientName,
-      clientPhone: lead.clientPhone ?? "",
-      clientEmail: lead.clientEmail ?? "",
-      technologies: lead.technologies ?? [],
-      meetingLink: lead.meetingLink ?? "",
-      meetingDate: lead.meetingDate ?? "",
-      meetingTime: lead.meetingTime ?? "",
-      budget: Number(lead.budget ?? 0),
-      pitchedPrice: Number(lead.pitchedPrice ?? 0),
-      deliveryDate: lead.deliveryDate ?? "",
-      createdAt: formatDate(lead.createdAt),
-    })),
+    salesLeadRows,
+    salesWorkspace,
     recentUpdates: updates.map((update) => ({
       id: update._id.toString(),
       employeeName: userMap.get(update.userId)?.fullName ?? "Unknown employee",
@@ -1154,6 +1281,62 @@ export async function getSettingsPageData(session: AuthenticatedSession): Promis
     workStart: settings?.workStart ?? "09:00",
     workEnd: settings?.workEnd ?? "18:00",
     leavePolicy: settings?.leavePolicy ?? "Paid Leave and Sick Leave are available for approved requests.",
+  };
+}
+
+function buildSalesWorkspaceData({
+  customers,
+  deals,
+  followUps,
+  leads,
+  payments,
+  targets,
+  today,
+}: {
+  customers: SalesCustomerEntry[];
+  deals: SalesDealEntry[];
+  followUps: SalesFollowUpEntry[];
+  leads: SalesLeadEntry[];
+  payments: SalesPaymentEntry[];
+  targets: SalesTargetEntry[];
+  today: string;
+}): SalesWorkspaceData {
+  const dueFollowUps = followUps.filter((followUp) => followUp.status === "PENDING" && followUp.followUpDate <= today).length;
+  const openDeals = deals.filter((deal) => deal.status === "OPEN").length;
+  const pendingPayments = payments.filter((payment) => payment.status === "PENDING" || payment.status === "PARTIAL" || payment.status === "OVERDUE");
+  const latestTarget = targets[0] ?? null;
+  const leadValue = leads.reduce((sum, lead) => sum + lead.pitchedPrice, 0);
+  const openLeadCount = leads.filter((lead) => lead.status !== "WON" && lead.status !== "LOST").length;
+  const activeCustomerCount = customers.filter((customer) => customer.status === "ACTIVE" || customer.status === "REPEAT").length;
+  const collectionBacklog = pendingPayments.reduce((sum, payment) => sum + Math.max(payment.amount - payment.receivedAmount, 0), 0);
+
+  return {
+    summaryCards: [
+      { label: "Open Leads", value: String(openLeadCount), detail: "Leads still active in the funnel and not closed yet." },
+      { label: "Due Follow-ups", value: String(dueFollowUps), detail: "Pending follow-ups due today or already overdue." },
+      { label: "Open Deals", value: String(openDeals), detail: `${activeCustomerCount} active customer account(s) currently linked to sales.` },
+      {
+        label: "Pending Payments",
+        value: String(pendingPayments.length),
+        detail: `${formatCurrency(collectionBacklog)} still pending across outstanding invoices.`,
+      },
+      latestTarget
+        ? {
+            label: "Target Progress",
+            value: `${latestTarget.achievementRate}%`,
+            detail: `${latestTarget.monthKey} target ${formatCurrency(latestTarget.achievedAmount)} of ${formatCurrency(latestTarget.targetAmount)}.`,
+          }
+        : {
+            label: "Lead Value",
+            value: formatCurrency(leadValue),
+            detail: "Total quoted value currently sitting in the lead register.",
+          },
+    ],
+    customers,
+    followUps,
+    deals,
+    payments,
+    targets,
   };
 }
 

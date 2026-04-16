@@ -24,7 +24,7 @@ Roles should be handled by application authorization, not by separate databases.
 - `models/operations`
   Projects, tasks, daily updates.
 - `models/sales`
-  Client pitch tracker and lead records.
+  Lead, customer, follow-up, deal, payment, and target records.
 - `models/system`
   Notifications and settings.
 - `models/shared`
@@ -166,19 +166,121 @@ Purpose:
 
 Saved data:
 - sales user id
+- company name
 - client name
 - client phone
 - client email
+- lead source
+- lead status
+- lead priority
 - selected technologies
 - meeting link
 - meeting date
 - meeting time
+- next follow-up date
+- expected close date
 - client budget
 - pitched price
 - expected delivery date
+- notes
 
 Main schema:
 - `src/database/mongodb/models/sales/sales-lead.ts`
+
+### `salescustomers`
+
+Purpose:
+- converted and active customer accounts handled by sales
+
+Saved data:
+- sales user id
+- linked lead id
+- company name
+- client name
+- client phone and email
+- customer status
+- last contact date
+- total billed amount
+- outstanding amount
+
+Main schema:
+- `src/database/mongodb/models/sales/sales-customer.ts`
+
+### `salesfollowups`
+
+Purpose:
+- pending, completed, missed, and rescheduled follow-up queue
+
+Saved data:
+- linked lead id
+- sales user id
+- customer id
+- client name
+- follow-up date and time
+- channel
+- status
+- outcome and notes
+- next follow-up date
+
+Main schema:
+- `src/database/mongodb/models/sales/sales-follow-up.ts`
+
+### `salesdeals`
+
+Purpose:
+- commercial opportunity tracking from discovery to won/lost
+
+Saved data:
+- linked lead id
+- sales user id
+- customer id
+- deal title
+- stage and status
+- amount
+- probability
+- expected close date
+- lost reason
+- note
+
+Main schema:
+- `src/database/mongodb/models/sales/sales-deal.ts`
+
+### `salespayments`
+
+Purpose:
+- collection tracking for invoice and payment status
+
+Saved data:
+- sales user id
+- customer id
+- deal id
+- invoice number
+- invoice amount
+- received amount
+- due date
+- received date
+- payment status
+- note
+
+Main schema:
+- `src/database/mongodb/models/sales/sales-payment.ts`
+
+### `salestargets`
+
+Purpose:
+- monthly sales target and achievement tracking
+
+Saved data:
+- sales user id
+- month key
+- target amount
+- achieved amount
+- incentive amount
+- status
+- note
+
+Main schema:
+- `src/database/mongodb/models/sales/sales-target.ts`
 
 ### `notifications`
 
@@ -235,8 +337,8 @@ These collections can be added later when needed:
 
 - `clients`
   If project/client relationship becomes more detailed
-- `payments`
-  If you want real finance tracking instead of summary placeholders
+- `sales payment reminders`
+  If you want automated overdue escalation workflows
 - `meetings`
   If meetings should be first-class records instead of task-derived entries
 - `auditlogs`

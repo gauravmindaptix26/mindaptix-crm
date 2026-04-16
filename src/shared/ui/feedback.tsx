@@ -1,5 +1,7 @@
+import type { ReactNode } from "react";
+
 type FeedbackProps = {
-  children: string;
+  children: ReactNode;
   tone?: "error" | "success";
 };
 

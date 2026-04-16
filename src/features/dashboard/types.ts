@@ -153,17 +153,100 @@ export type SalesLeadEntry = {
   salesUserId: string;
   salesUserName: string;
   salesUserEmail: string;
+  companyName: string;
   clientName: string;
   clientPhone: string;
   clientEmail: string;
+  source: string;
+  status: string;
+  priority: string;
   technologies: string[];
   meetingLink: string;
   meetingDate: string;
   meetingTime: string;
+  nextFollowUpDate: string;
+  expectedCloseDate: string;
   budget: number;
   pitchedPrice: number;
   deliveryDate: string;
+  notes: string;
   createdAt: string;
+};
+
+export type SalesCustomerEntry = {
+  id: string;
+  salesUserId: string;
+  salesUserName: string;
+  companyName: string;
+  clientName: string;
+  clientEmail: string;
+  status: string;
+  lastContactDate: string;
+  totalBilledAmount: number;
+  outstandingAmount: number;
+};
+
+export type SalesFollowUpEntry = {
+  id: string;
+  salesUserId: string;
+  salesUserName: string;
+  clientName: string;
+  leadId: string;
+  followUpDate: string;
+  followUpTime: string;
+  channel: string;
+  status: string;
+  outcome: string;
+  nextFollowUpDate: string;
+};
+
+export type SalesDealEntry = {
+  id: string;
+  salesUserId: string;
+  salesUserName: string;
+  title: string;
+  leadId: string;
+  customerId: string;
+  stage: string;
+  status: string;
+  amount: number;
+  probability: number;
+  expectedCloseDate: string;
+};
+
+export type SalesPaymentEntry = {
+  id: string;
+  salesUserId: string;
+  salesUserName: string;
+  invoiceNumber: string;
+  customerId: string;
+  dealId: string;
+  amount: number;
+  receivedAmount: number;
+  dueDate: string;
+  receivedDate: string;
+  status: string;
+};
+
+export type SalesTargetEntry = {
+  id: string;
+  salesUserId: string;
+  salesUserName: string;
+  monthKey: string;
+  targetAmount: number;
+  achievedAmount: number;
+  incentiveAmount: number;
+  status: string;
+  achievementRate: number;
+};
+
+export type SalesWorkspaceData = {
+  summaryCards: SummaryCard[];
+  customers: SalesCustomerEntry[];
+  followUps: SalesFollowUpEntry[];
+  deals: SalesDealEntry[];
+  payments: SalesPaymentEntry[];
+  targets: SalesTargetEntry[];
 };
 
 export type FileAttachmentView = {
@@ -188,10 +271,14 @@ export type EmployeesPageData = {
   managerOptions: EmployeeOption[];
   salesOptions: EmployeeOption[];
   salesTechnologyOptions: string[];
+  salesLeadSourceOptions: string[];
+  salesLeadStatusOptions: string[];
+  salesLeadPriorityOptions: string[];
   summaryCards: SummaryCard[];
   users: EmployeeDirectoryEntry[];
   projects: EmployeeProjectEntry[];
   salesLeadRows: SalesLeadEntry[];
+  salesWorkspace: SalesWorkspaceData;
   recentUpdates: DsrFeedEntry[];
 };
 
